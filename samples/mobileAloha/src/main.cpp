@@ -297,8 +297,7 @@ void replayBase(SlamwareCorePlatform platform) {
       moveAction =
           platform.moveTo(Location(poseVec[i].x(), poseVec[i].y(), 0), options);
       moveAction.waitUntilDone();
-      if (std::fabs(platform.getPose().yaw() - poseVec[i].yaw()) >
-          M_PI / 180 * 7.5) {
+      if (std::fabs(platform.getPose().yaw() - poseVec[i].yaw()) > 0.02) {
         moveAction = platform.rotateTo(Rotation(poseVec[i].yaw(), 0, 0));
         moveAction.waitUntilDone();
       }
