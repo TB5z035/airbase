@@ -286,21 +286,10 @@ void replayBase(SlamwareCorePlatform platform) {
       moveAction =
           platform.moveTo(Location(poseVec[i].x(), poseVec[i].y(), 0), options);
       moveAction.waitUntilDone();
-    } else {
+    } else if (std::fabs(platform.getPose().yaw() - poseVec[i].yaw()) >
+               M_PI / 180 * 8) {
       moveAction = platform.rotateTo(Rotation(poseVec[i].yaw(), 0, 0));
       moveAction.waitUntilDone();
-    }
-    if (i == poseVec.size() - 1) {
-      platform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_LOW);
-      platform.setSystemParameter(SYSPARAM_ROBOT_ANGULAR_SPEED,
-                                  SYSVAL_ROBOT_SPEED_LOW);
-      moveAction =
-          platform.moveTo(Location(poseVec[i].x(), poseVec[i].y(), 0), options);
-      moveAction.waitUntilDone();
-      if (std::fabs(platform.getPose().yaw() - poseVec[i].yaw()) > 0.02) {
-        moveAction = platform.rotateTo(Rotation(poseVec[i].yaw(), 0, 0));
-        moveAction.waitUntilDone();
-      }
     }
   }
 }
@@ -328,9 +317,8 @@ int main(int argc, const char *argv[]) {
   printLocationAndPose(sdp);
   int battPercentage = sdp.getBatteryPercentage();
   std::cout << "Battery: " << battPercentage << "%" << std::endl;
-
-  sdp.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
-  sdp.setSystemParameter(SYSPARAM_ROBOT_ANGULAR_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
+  sdp.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_LOW);
+  sdp.setSystemParameter(SYSPARAM_ROBOT_ANGULAR_SPEED, SYSVAL_ROBOT_SPEED_LOW);
 
   // Direction forward(ACTION_DIRECTION::FORWARD);
   // rpos::actions::MoveAction moveforward = sdp.moveBy(forward);
@@ -363,20 +351,7 @@ int main(int argc, const char *argv[]) {
       while (true) {
         std::cin >> ch;
         if (ch == 's') {
-          std::cout << "Confirm build finish? [y/n]" << std::endl;
-          std::cin >> ch;
-          if (ch == 'y') {
-            StcmMapWriter("newmap.stcm", sdp);
-            std::cout << "Build map finish!\n" << std::endl;
-            break;
-          } else if (ch == 'n') {
-            std::cout
-                << "Please move the robot base to build map, and press 's' "
-                   "to finish build and save map"
-                << std::endl;
-          } else {
-            continue;
-          }
+          break;
         } else if (ch == 'o') {
           std::cout << "Origin setted, please move the robot base to build "
                        "map, and press 's' to finish build and save map, , "
@@ -419,10 +394,6 @@ int main(int argc, const char *argv[]) {
 
       printLocationAndPose(sdp);
 
-      moveToOrigin(sdp);
-
-      printLocationAndPose(sdp);
-
       std::cout << "--------End load map-------------" << std::endl;
       break;
     } else {
@@ -446,34 +417,22 @@ int main(int argc, const char *argv[]) {
       moveToOrigin(sdp);
     } break;
     case '2': {
-      std::cout << "Do you want reteach? [y/n]" << std::endl;
+      bool teaching = true;
+
+      sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_ON);
+      std::cout << "------------ teach start ------------\n " << std::endl;
+      std::thread teach(teachBase, sdp, std::ref(teaching));
+
+      std::cout << "Teaching ... , input 's' to stop teach:" << std::endl;
       while (true) {
         std::cin >> ch;
-        if (ch == 'y') {
-          bool teaching = true;
-
-          sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
-                                 SYSVAL_BRAKE_RELEASE_ON);
-          std::cout << "------------ teach start ------------\n " << std::endl;
-          std::thread teach(teachBase, sdp, std::ref(teaching));
-
-          std::cout << "Teaching ... , input 's' to stop teach:" << std::endl;
-          while (true) {
-            std::cin >> ch;
-            if (ch == 's')
-              break;
-          }
-          teaching = false;
-          teach.join();
-          sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
-                                 SYSVAL_BRAKE_RELEASE_OFF);
-          std::cout << "------------ teach finish ------------\n " << std::endl;
-
+        if (ch == 's')
           break;
-        } else {
-          break;
-        }
       }
+      teaching = false;
+      teach.join();
+      sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
+      std::cout << "------------ teach finish ------------\n " << std::endl;
     } break;
     case '3': {
       sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
