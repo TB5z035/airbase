@@ -291,9 +291,17 @@ void replayBase(SlamwareCorePlatform platform) {
       moveAction.waitUntilDone();
     }
     if (i == poseVec.size() - 1) {
+      platform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_LOW);
+      platform.setSystemParameter(SYSPARAM_ROBOT_ANGULAR_SPEED,
+                                  SYSVAL_ROBOT_SPEED_LOW);
       moveAction =
           platform.moveTo(Location(poseVec[i].x(), poseVec[i].y(), 0), options);
       moveAction.waitUntilDone();
+      if (std::fabs(platform.getPose().yaw() - poseVec[i].yaw()) >
+          M_PI / 180 * 7.5) {
+        moveAction = platform.rotateTo(Rotation(poseVec[i].yaw(), 0, 0));
+        moveAction.waitUntilDone();
+      }
     }
   }
 }
@@ -322,9 +330,8 @@ int main(int argc, const char *argv[]) {
   int battPercentage = sdp.getBatteryPercentage();
   std::cout << "Battery: " << battPercentage << "%" << std::endl;
 
-  sdp.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_MEDIUM);
-  sdp.setSystemParameter(SYSPARAM_ROBOT_ANGULAR_SPEED,
-                         SYSVAL_ROBOT_SPEED_MEDIUM);
+  sdp.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
+  sdp.setSystemParameter(SYSPARAM_ROBOT_ANGULAR_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
 
   // Direction forward(ACTION_DIRECTION::FORWARD);
   // rpos::actions::MoveAction moveforward = sdp.moveBy(forward);
@@ -445,7 +452,7 @@ int main(int argc, const char *argv[]) {
         std::cin >> ch;
         if (ch == 'y') {
           bool teaching = true;
-          
+
           sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
                                  SYSVAL_BRAKE_RELEASE_ON);
           std::cout << "------------ teach start ------------\n " << std::endl;
