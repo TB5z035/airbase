@@ -342,12 +342,8 @@ int main(int argc, const char *argv[]) {
     if (ch == 'y') {
       std::cout << "Rebuild map\n" << std::endl;
       std::cout << "--------Begin build map-------------\n" << std::endl;
+      sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_ON);
       std::cin.ignore();
-      std::cout << "Please check the base is " + redmsg + "unlock" + resetmsg +
-                       ", and press Enter continue"
-                << std::endl;
-      getline(std::cin, tmp);
-
       std::cout << "\nPlease move the robot base to the origin and press Enter"
                 << std::endl;
       getline(std::cin, tmp);
@@ -392,12 +388,7 @@ int main(int argc, const char *argv[]) {
       std::cout << "--------End build map-------------\n" << std::endl;
 
       std::cin.ignore();
-      std::cout << "Please check the base is " + redmsg + "locked" + resetmsg +
-                       ", and press Enter continue"
-                << std::endl;
-      getline(std::cin, tmp);
-
-      moveToOrigin(sdp);
+      sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
 
       printLocationAndPose(sdp);
 
@@ -409,11 +400,7 @@ int main(int argc, const char *argv[]) {
                     sdp);
       std::cout << "\nMap loaded!\n" << std::endl;
 
-      std::cin.ignore();
-      std::cout << "Please check the base is " + redmsg + "locked" + resetmsg +
-                       ", and press Enter continue"
-                << std::endl;
-      getline(std::cin, tmp);
+      sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
 
       std::cout << "Begin localization\n" << std::endl;
       MoveAction action = sdp.getCurrentAction();
@@ -445,6 +432,8 @@ int main(int argc, const char *argv[]) {
     std::cout << "1. robot move to the origin of the map" << std::endl;
     std::cout << "2. teach the base action" << std::endl;
     std::cout << "3. replay the base action" << std::endl;
+    std::cout << "4. unlock the base" << std::endl;
+    std::cout << "5. lock the base" << std::endl;
     std::cin >> ch;
     switch (ch) {
     case '1': {
@@ -456,11 +445,9 @@ int main(int argc, const char *argv[]) {
         std::cin >> ch;
         if (ch == 'y') {
           bool teaching = true;
-          std::cin.ignore();
-          std::cout << "Please check the base is " + redmsg + "unlock" +
-                           resetmsg + ", and press Enter start teach\n"
-                    << std::endl;
-          getline(std::cin, tmp);
+          
+          sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
+                                 SYSVAL_BRAKE_RELEASE_ON);
           std::cout << "------------ teach start ------------\n " << std::endl;
           std::thread teach(teachBase, sdp, std::ref(teaching));
 
@@ -472,12 +459,8 @@ int main(int argc, const char *argv[]) {
           }
           teaching = false;
           teach.join();
-          std::cin.ignore();
-          std::cout << "Finish teach, Please check the base is " + redmsg +
-                           "locked" + resetmsg +
-                           ", and press Enter stop teach\n"
-                    << std::endl;
-          getline(std::cin, tmp);
+          sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
+                                 SYSVAL_BRAKE_RELEASE_OFF);
           std::cout << "------------ teach finish ------------\n " << std::endl;
 
           break;
@@ -487,14 +470,16 @@ int main(int argc, const char *argv[]) {
       }
     } break;
     case '3': {
-      std::cin.ignore();
-      std::cout << "Please check the base is " + redmsg + "locked" + resetmsg +
-                       ", and press Enter start replay\n"
-                << std::endl;
-      getline(std::cin, tmp);
+      sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
       std::cout << "------------ replay start ------------\n " << std::endl;
       replayBase(sdp);
       std::cout << "------------ replay finish ------------\n " << std::endl;
+    } break;
+    case '4': {
+      sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_ON);
+    } break;
+    case '5': {
+      sdp.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
     } break;
     default:
       continue;
