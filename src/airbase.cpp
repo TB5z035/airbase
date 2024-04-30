@@ -70,6 +70,10 @@ void AirBase::setBaseLockState(bool lockState) {
   }
 };
 
+int AirBase::getCurrentEpisode(){
+  return episode_;
+}
+
 void AirBase::saveDataToJson(const std::string &filename) {
   json jsonData;
 
@@ -104,6 +108,10 @@ void AirBase::saveDataToJson(const std::string &filename) {
 
   outputFile << jsonData.dump(2);
   outputFile.close();
+
+  poseVec.clear();
+  timestampVec.clear();
+  behaviorVec.clear();
 }
 
 void AirBase::loadDataFromJson(const std::string &filename) {
@@ -308,11 +316,11 @@ void AirBase::buildStcmMap(std::string map_savepath) {
       platform.clearMap();
     }
   }
-  std::cout << "Newmap saved" << std::endl;
+  std::cout << "Newmap saved\n" << std::endl;
 
   printPose();
 
-  std::cout << "--------End build map-------------\n" << std::endl;
+  std::cout << "\n--------End build map-------------\n" << std::endl;
   setBaseLockState(true);
 
   std::cout << "input 'o' move to origin, else to skip" << std::endl;
@@ -352,7 +360,7 @@ void AirBase::loadStcmMap(std::string map_path) {
 
 void AirBase::record(std::string task_name, int max_time_steps, int frequency,
                      int start_episode) {
-  static int episode = start_episode;
+  episode_ = (episode_ == 0 && episode_ != start_episode) ? start_episode : episode_ + 1;
   angle_threshold = 10.0 / frequency;
   distance_threshold = 0.05 / frequency;
   setBaseLockState(false);
@@ -375,8 +383,8 @@ void AirBase::record(std::string task_name, int max_time_steps, int frequency,
       last_timestamp = current_time;
       last_pose = current_pose;
     }
-    std::string dataname = "base_data/raw/" + task_name + "/" +
-                           std::to_string(episode++) + ".json";
+    std::string dataname =
+        "base_data/raw/" + task_name + "/" + std::to_string(episode_) + ".json";
     saveDataToJson(dataname);
   });
 
@@ -524,7 +532,7 @@ void AirBase::replay(std::string data_path) {
   setBaseLockState(true);
   std::cout << "------------ replay start ------------\n " << std::endl;
   MoveAction action = platform.getCurrentAction();
-  loadDataFromJson("base_data/raw/test/0.json");
+  loadDataFromJson(data_path);
 
   // select key points
   std::vector<Pose> poseTogo;

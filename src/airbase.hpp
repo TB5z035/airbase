@@ -50,6 +50,7 @@ private:
   std::vector<int64_t> timestampVec;
   std::vector<int> behaviorVec;
   int vecSize;
+  int episode_ = 0;
   //
   Pose currentPose = Pose(Location(0, 0, 0), Rotation(0, 0, 0));
   Pose lastPose = Pose(Location(0, 0, 0), Rotation(0, 0, 0));
@@ -71,6 +72,7 @@ public:
   //
   void printPose();
   bool getBaseLockState();
+  int getCurrentEpisode();
   void setBaseLockState(bool lockState);
   void saveDataToJson(const std::string &filename);
   void loadDataFromJson(const std::string &filename);
