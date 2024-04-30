@@ -36,7 +36,7 @@ PYBIND11_MODULE(airbase_py, m) {
       .def("teach", &AirBase::teach)
       .def("replay", &AirBase::replay)
       .def_readwrite("platform", &AirBase::platform);
-  
+
   py::enum_<rpos::core::ACTION_DIRECTION>(m, "ACTION_DIRECTION")
       .value("FORWARD", rpos::core::ACTION_DIRECTION::FORWARD)
       .value("BACKWARD", rpos::core::ACTION_DIRECTION::BACKWARD)
@@ -96,9 +96,18 @@ PYBIND11_MODULE(airbase_py, m) {
       .def("y", (float(Point::*)() const) & Point::y)
       .def("y", (float& (Point::*)()) & Point::y);
 
+  py::class_<MoveAction>(m, "MoveAction")
+      .def(py::init<boost::shared_ptr<MoveAction::impl_t>>())
+      .def("getRemainingPath", &MoveAction::getRemainingPath)
+      .def("getRemainingMilestones", &MoveAction::getRemainingMilestones)
+      .def("getCurrentSpeed", &MoveAction::getCurrentSpeed)
+      .def("getRemainingTime", &MoveAction::getRemainingTime);
+
   py::class_<SlamwareCorePlatform, std::unique_ptr<SlamwareCorePlatform>>(
       m, "SlamwareCorePlatform")
-      .def("set_system_parameter", &SlamwareCorePlatform::setSystemParameter);
-  
+      .def("set_system_parameter", &SlamwareCorePlatform::setSystemParameter)
+      .def("move_by",
+           py::overload_cast<const Direction&>(&SlamwareCorePlatform::moveBy));
+
   m.def("create", &create);
 };

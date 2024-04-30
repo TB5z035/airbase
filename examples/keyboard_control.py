@@ -64,12 +64,12 @@ if __name__ == "__main__":
             "Press 'w' 's' 'a' 'd' to move (press Enter to submit), 'q' to quit:"
         )
         if key == "w":
-            airbase.move(forward)
+            airbase.platform.move_by(forward)
         elif key == "s":
-            airbase.move(backward)
+            airbase.platform.move_by(backward)
         elif key == "a":
-            airbase.move(turn_left)
+            airbase.platform.move_by(turn_left)
         elif key == "d":
-            airbase.move(turn_right)
+            airbase.platform.move_by(turn_right)
         elif key == "q":
             break
