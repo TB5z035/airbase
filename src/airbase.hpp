@@ -35,10 +35,10 @@ using namespace rpos::features::motion_planner;
 
 class AirBase {
 private:
-  float angle_factor = 3;
-  float angle_threshold;
-  float distance_threshold;
-  enum Behavior {
+  float angle_factor_ = 3;
+  float angle_threshold_;
+  float distance_threshold_;
+  enum BEHAVIOR {
     stopping,
     forwarding,
     leftturning,
@@ -46,18 +46,17 @@ private:
     backwarding
   };
   //
-  std::vector<Pose> poseVec;
-  std::vector<int64_t> timestampVec;
-  std::vector<int> behaviorVec;
-  int vecSize;
+  std::vector<Pose> poseVec_;
+  std::vector<int64_t> timestampVec_;
+  std::vector<int> behaviorVec_;
+  int vecSize_;
   //
-  Pose currentPose = Pose(Location(0, 0, 0), Rotation(0, 0, 0));
-  Pose lastPose = Pose(Location(0, 0, 0), Rotation(0, 0, 0));
-  bool recording = false;
+  Pose lastPose_ = Pose(Location(0, 0, 0), Rotation(0, 0, 0));
+  bool recording_ =  false;
   bool baseLock_ = true;
-  int currentBehavior;
-  time_t lastTimestamp = 0;
-  time_t currentTimestamp = 0;
+  int currentBehavior_;
+  time_t lastTimestamp_ = 0;
+  time_t currentTimestamp_ = 0;
 
 protected:
   bool StcmMapWriter(const std::string file_name);

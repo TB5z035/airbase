@@ -75,15 +75,15 @@ void AirBase::setBaseLockState(bool lockState) {
 void AirBase::saveDataToJson(const std::string &filename) {
   json jsonData;
 
-  for (size_t i = 0; i < poseVec.size(); ++i) {
-    jsonData["x"].push_back(poseVec[i].x());
-    jsonData["y"].push_back(poseVec[i].y());
-    jsonData["yaw"].push_back(poseVec[i].yaw());
-    jsonData["timestamp"].push_back(timestampVec[i]);
-    jsonData["behavior"].push_back(behaviorVec[i]);
+  for (size_t i = 0; i < poseVec_.size(); ++i) {
+    jsonData["x"].push_back(poseVec_[i].x());
+    jsonData["y"].push_back(poseVec_[i].y());
+    jsonData["yaw"].push_back(poseVec_[i].yaw());
+    jsonData["timestamp"].push_back(timestampVec_[i]);
+    jsonData["behavior"].push_back(behaviorVec_[i]);
   }
-  vecSize = poseVec.size();
-  jsonData["vecSize"] = vecSize;
+  vecSize_ = poseVec_.size();
+  jsonData["vecSize"] = vecSize_;
   std::ofstream outputFile(filename);
 
   outputFile << jsonData.dump(2);
@@ -103,18 +103,18 @@ void AirBase::loadDataFromJson(const std::string &filename) {
 
   inputFile.close();
 
-  vecSize = jsonData["vecSize"];
+  vecSize_ = jsonData["vecSize"];
 
-  for (int i = 0; i < vecSize; i++) {
+  for (int i = 0; i < vecSize_; i++) {
     try {
       double x = jsonData["x"][i];
       double y = jsonData["y"][i];
       double yaw = jsonData["yaw"][i];
       int64_t timestamp = jsonData["timestamp"][i];
       int behavior = jsonData["behavior"][i];
-      poseVec.emplace_back(Pose(Location(x, y), Rotation(yaw, 0, 0)));
-      timestampVec.emplace_back(timestamp);
-      behaviorVec.emplace_back(behavior);
+      poseVec_.emplace_back(Pose(Location(x, y), Rotation(yaw, 0, 0)));
+      timestampVec_.emplace_back(timestamp);
+      behaviorVec_.emplace_back(behavior);
     } catch (json::type_error &e) {
       return;
     }
@@ -137,7 +137,7 @@ bool AirBase::ifBackward(Pose last_pose, Pose current_pose) {
   double angle = atan2(dy, dx);
   double dyaw = std::fabs(angle - last_pose.yaw());
   return ((dyaw > M_PI * 0.6) && (dyaw < M_PI * 1.4)) &&
-                 (distance > distance_threshold)
+                 (distance > distance_threshold_)
              ? true
              : false;
 }
@@ -150,16 +150,16 @@ int AirBase::getBehavior(Pose last_pose, Pose current_pose) {
   printw("angle: %.8f\n\r", angle);
   refresh();
 
-  printw("distance_threshold: %.5f\n", distance_threshold);
-  if ((angle > angle_threshold) &&
-      (distance < angle_factor * distance_threshold)) {
+  printw("distance_threshold: %.5f\n", distance_threshold_);
+  if ((angle > angle_threshold_) &&
+      (distance < angle_factor_ * distance_threshold_)) {
     if (last_pose.yaw() < current_pose.yaw()) {
       return leftturning;
     } else {
       return rightturning;
     }
   }
-  if (distance < distance_threshold) {
+  if (distance < distance_threshold_) {
     return stopping;
   } else {
     if (ifBackward(last_pose, current_pose)) {
@@ -277,8 +277,8 @@ void AirBase::loadStcmMap(std::string map_path) {
 void AirBase::record(std::string task_name, int max_time_steps, int frequency,
                      int start_episode) {
   static int episode = start_episode;
-  angle_threshold = 10.0 / frequency;
-  distance_threshold = 0.01 / frequency;
+  angle_threshold_ = 10.0 / frequency;
+  distance_threshold_ = 0.01 / frequency;
   setBaseLockState(false);
   initscr();
   noecho();
@@ -304,32 +304,32 @@ void AirBase::record(std::string task_name, int max_time_steps, int frequency,
            episode);
 
     if (ch == ' ') {
-      recording = !recording;
+      recording_ = !recording_;
     }
 
-    if (recording) {
+    if (recording_) {
       if (current_time_steps == 0) {
-        lastTimestamp = getCurrentTime();
-        lastPose = platform.getPose();
+        lastTimestamp_ = getCurrentTime();
+        lastPose_ = platform.getPose();
       }
       if (current_time_steps <= max_time_steps) {
-        currentTimestamp = getCurrentTime();
-        timestampVec.emplace_back(currentTimestamp);
-        currentPose = platform.getPose();
-        poseVec.emplace_back(currentPose);
-        currentBehavior = getBehavior(lastPose, currentPose);
-        behaviorVec.emplace_back(currentBehavior);
-        if (getCurrentTime() - lastTimestamp < 1000.0 / frequency) {
+        currentTimestamp_ = getCurrentTime();
+        timestampVec_.emplace_back(currentTimestamp_);
+        Pose currentPose = platform.getPose();
+        poseVec_.emplace_back(currentPose);
+        currentBehavior_ = getBehavior(lastPose_, currentPose);
+        behaviorVec_.emplace_back(currentBehavior_);
+        if (getCurrentTime() - lastTimestamp_ < 1000.0 / frequency) {
           boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
         }
-        lastTimestamp = currentTimestamp;
-        lastPose = currentPose;
+        lastTimestamp_ = currentTimestamp_;
+        lastPose_ = currentPose;
         attron(COLOR_PAIR(1));
         printw("Recording\n\r");
         printw("Collecting %d/%d steps\n\r", current_time_steps,
                max_time_steps);
         attroff(COLOR_PAIR(1));
-        switch (currentBehavior) {
+        switch (currentBehavior_) {
         case forwarding:
           printw("\n\rcar is forwarding   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\r");
           refresh();
@@ -360,12 +360,12 @@ void AirBase::record(std::string task_name, int max_time_steps, int frequency,
           std::string dataname = "base_data/raw/" + task_name + "/" +
                                  std::to_string(episode++) + ".json";
           saveDataToJson(dataname);
-          poseVec.clear();
-          timestampVec.clear();
-          behaviorVec.clear();
-          vecSize = 0;
+          poseVec_.clear();
+          timestampVec_.clear();
+          behaviorVec_.clear();
+          vecSize_ = 0;
           current_time_steps = 0;
-          recording = false;
+          recording_ = false;
           //
           attron(COLOR_PAIR(3));
           printw(("\ncollected data saved to " + dataname + "\n\r").c_str());
@@ -383,12 +383,12 @@ void AirBase::record(std::string task_name, int max_time_steps, int frequency,
       boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
     }
     if (ch == 'd') {
-      poseVec.clear();
-      timestampVec.clear();
-      behaviorVec.clear();
-      vecSize = 0;
+      poseVec_.clear();
+      timestampVec_.clear();
+      behaviorVec_.clear();
+      vecSize_ = 0;
       current_time_steps = 0;
-      recording = false;
+      recording_ = false;
       //
       attron(COLOR_PAIR(2));
       printw("data dropped !\n\r");
@@ -409,9 +409,9 @@ void AirBase::replay(std::string data_path) {
   loadDataFromJson("base_data/raw/test/0.json");
 
   std::vector<Line> lines;
-  for (size_t i = 0; i < vecSize - 1; ++i) {
-    lines.emplace_back(Line(Point(poseVec[i].x(), poseVec[i].y()),
-                            Point(poseVec[i + 1].x(), poseVec[i + 1].y())));
+  for (size_t i = 0; i < vecSize_ - 1; ++i) {
+    lines.emplace_back(Line(Point(poseVec_[i].x(), poseVec_[i].y()),
+                            Point(poseVec_[i + 1].x(), poseVec_[i + 1].y())));
   }
   platform.clearLines(ArtifactUsageVirtualTrack);
   platform.addLines(ArtifactUsageVirtualTrack, lines);
@@ -419,13 +419,13 @@ void AirBase::replay(std::string data_path) {
   std::vector<Pose> poseTogo;
   std::vector<int64_t> timestampTogo;
   std::vector<int> behaviorTogo;
-  for (int i = 0; i < vecSize - 1; i++) {
-    if (behaviorVec[i] == behaviorVec[i + 1]) {
+  for (int i = 0; i < vecSize_ - 1; i++) {
+    if (behaviorVec_[i] == behaviorVec_[i + 1]) {
       continue;
     }
-    poseTogo.emplace_back(poseVec[i]);
-    timestampTogo.emplace_back(timestampVec[i]);
-    behaviorTogo.emplace_back(behaviorVec[i]);
+    poseTogo.emplace_back(poseVec_[i]);
+    timestampTogo.emplace_back(timestampVec_[i]);
+    behaviorTogo.emplace_back(behaviorVec_[i]);
   }
 
   auto beginTime = getCurrentTime();
@@ -468,7 +468,7 @@ void AirBase::replay(std::string data_path) {
     }
 
     auto currentTime = getCurrentTime();
-    while ((currentTime - beginTime) < (timestampTogo[i] - timestampVec[0])) {
+    while ((currentTime - beginTime) < (timestampTogo[i] - timestampVec_[0])) {
       boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
       currentTime = getCurrentTime();
     }
