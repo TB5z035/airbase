@@ -51,6 +51,12 @@ private:
   std::vector<int> behaviorVec_;
   int vecSize_;
   //
+  time_t base_time_;
+  //
+  std::vector<Pose> poseTogo_;
+  std::vector<int64_t> timestampTogo_;
+  std::vector<int> behaviorTogo_;
+  size_t traj_lenth_;
   Pose lastPose_ = Pose(Location(0, 0, 0), Rotation(0, 0, 0));
   bool recording_ =  false;
   bool baseLock_ = true;
@@ -84,6 +90,23 @@ public:
   //
   void buildStcmMap(std::string map_savepath);
   void loadStcmMap(std::string map_path);
+  // sub functions
+  void get_key_traj(const std::vector<Pose> &pose_in,
+                    const std::vector<int64_t> &timestamp_in,
+                    const std::vector<int> &behavior_in,
+                    std::vector<Pose> &pose_out,
+                    std::vector<int64_t> &timestamp_out,
+                    std::vector<int> &behavior_out);
+  void init_lines(std::vector<Pose> poseTogo);
+  void init_traj(const std::vector<Pose> &poses,
+                 const std::vector<int64_t> &timestamp,
+                 const std::vector<int> &behavior,
+                 const bool &use_key_points = false);
+  void init_traj(const std::vector<std::vector<double>> &poses,
+                 const std::vector<int64_t> &timestamp,
+                 const std::vector<int> &behavior, const bool &use_key_points);
+  void step(std::vector<double> action, int behavior, bool wait);
+  void next_step(const bool &wait = false);
   //
   void record(std::string task_name, int max_time_steps, int frequency,
               int start_episode);

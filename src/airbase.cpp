@@ -475,3 +475,113 @@ void AirBase::replay(std::string data_path) {
   }
   std::cout << "------------ replay finish ------------\n " << std::endl;
 }
+
+void AirBase::get_key_traj(const std::vector<Pose> &pose_in,
+                           const std::vector<int64_t> &timestamp_in,
+                           const std::vector<int> &behavior_in,
+                           std::vector<Pose> &pose_out,
+                           std::vector<int64_t> &timestamp_out,
+                           std::vector<int> &behavior_out) {
+  pose_out.clear();
+  timestamp_out.clear();
+  behavior_out.clear();
+  for (int i = 0; i < pose_in.size() - 1; i++) {
+    if (behavior_in[i] == behavior_in[i + 1]) {
+      continue;
+    }
+    pose_out.emplace_back(pose_in[i]);
+    timestamp_out.emplace_back(timestamp_in[i]);
+    behavior_out.emplace_back(behavior_in[i]);
+  }
+}
+
+void AirBase::init_lines(std::vector<Pose> poses) {
+  setBaseLockState(true);
+  setBaseLockState(true);
+  MoveAction action = platform.getCurrentAction();
+
+  std::vector<Line> lines;
+  for (size_t i = 0; i < poses.size() - 1; ++i) {
+    lines.emplace_back(Line(Point(poses[i].x(), poses[i].y()),
+                            Point(poses[i + 1].x(), poses[i + 1].y())));
+  }
+  platform.clearLines(ArtifactUsageVirtualTrack);
+  platform.addLines(ArtifactUsageVirtualTrack, lines);
+}
+
+void AirBase::init_traj(const std::vector<Pose> &poses,
+                        const std::vector<int64_t> &timestamp,
+                        const std::vector<int> &behavior,
+                        const bool &use_key_points) {
+  init_lines(poses);
+  if (use_key_points)
+    get_key_traj(poses, timestamp, behavior, poseTogo_,
+                 timestampTogo_, behaviorTogo_);
+  else {
+    poseTogo_ = poses;
+    timestampTogo_ = timestamp;
+    behaviorTogo_ = behavior;
+  }
+  traj_lenth_ = poseTogo_.size();
+  base_time_ = timestamp[0];
+  // not used
+  poseVec_ = poses;
+  timestampVec_ = timestamp;
+  behaviorVec_ = behavior;
+}
+
+void AirBase::init_traj(const std::vector<std::vector<double>> &poses,
+                        const std::vector<int64_t> &timestamp,
+                        const std::vector<int> &behavior,
+                        const bool &use_key_points)
+{
+  std::vector<Pose> pose_vec;
+  for (auto &pose : poses) {
+    pose_vec.emplace_back(Pose(Location(pose[0], pose[1]), Rotation(pose[2], 0, 0)));
+  }
+  init_traj(pose_vec, timestamp, behavior, use_key_points);
+}
+
+void AirBase::step(std::vector<double> action, int behavior, bool wait) {
+  static time_t start_time = getCurrentTime();
+  rpos::actions::MoveAction moveAction = platform.getCurrentAction();
+  MoveOptions options;
+  options.flag =
+      MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
+  switch (behavior) {
+    case forwarding:
+    case backwarding:
+    case stopping: {
+      moveAction = platform.moveTo(Location(action[0], action[1], 0), options);
+      if (wait) moveAction.waitUntilDone();
+    } break;
+    case leftturning:
+    case rightturning: {
+      moveAction = platform.rotateTo(Rotation(action[2], 0, 0));
+      if (wait) moveAction.waitUntilDone();
+    } break;
+    default:
+      break;
+  }
+}
+
+void AirBase::next_step(const bool &wait) {
+  static size_t current_step = 0;
+  static time_t start_time = getCurrentTime();
+  // move
+  step({poseTogo_[current_step].x(), poseTogo_[current_step].y(),
+        poseTogo_[current_step].yaw()},
+       behaviorTogo_[current_step], wait);
+
+  if (wait) {
+    auto sleep_time =
+        (timestampTogo_[current_step] - base_time_) - (getCurrentTime() - start_time);
+    if (sleep_time < 0) sleep_time = 0;
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(sleep_time));
+  }
+
+  if (++current_step == traj_lenth_) {
+    current_step = 0;
+    std::cout << "------------ traj finished ------------\n " << std::endl;
+  }
+}
