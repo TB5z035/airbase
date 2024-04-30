@@ -9,8 +9,6 @@
 #include <boost/chrono.hpp>
 #include <boost/thread.hpp>
 #include <chrono>
-#include <csignal>
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -35,31 +33,31 @@ using namespace rpos::features::artifact_provider;
 using namespace rpos::features::location_provider;
 using namespace rpos::features::motion_planner;
 
-extern const char *ipReg;
-extern std::string ipaddress;
-
-void showHelp(std::string appName);
-bool parseCommandLine(int argc, const char *argv[]);
-int64_t getCurrentTime();
-
 class AirBase {
 private:
-  //
-  bool running = true;
-  bool base_lock = true;
-  int save_delay = 100;
-  float angle_factor = 2.7;
-  float angle_threshold = 10 * save_delay / 1000;
-  float distance_threshold = 0.1 * save_delay / 1000;
-  enum Behavior { stoping, moving, rotating, backwarding };
+  float angle_factor = 3;
+  float angle_threshold;
+  float distance_threshold;
+  enum Behavior {
+    stopping,
+    forwarding,
+    leftturning,
+    rightturning,
+    backwarding
+  };
   //
   std::vector<Pose> poseVec;
   std::vector<int64_t> timestampVec;
   std::vector<int> behaviorVec;
   int vecSize;
   //
-  Pose currentPose;
-  Pose lastPose;
+  Pose currentPose = Pose(Location(0, 0, 0), Rotation(0, 0, 0));
+  Pose lastPose = Pose(Location(0, 0, 0), Rotation(0, 0, 0));
+  bool recording = false;
+  bool baseLock_ = true;
+  int currentBehavior;
+  time_t lastTimestamp = 0;
+  time_t currentTimestamp = 0;
 
 protected:
   bool StcmMapWriter(const std::string file_name);
@@ -68,7 +66,7 @@ protected:
 public:
   SlamwareCorePlatform platform;
   //
-  AirBase(int argc, const char *argv[]);
+  AirBase(std::string ip);
   ~AirBase();
   //
   void printPose();
@@ -77,8 +75,8 @@ public:
   void saveDataToJson(const std::string &filename);
   void loadDataFromJson(const std::string &filename);
   //
-  float distanceBetween(Pose pose1, Pose pose2);
-  float angleBetween(Pose pose1, Pose pose2);
+  double distanceBetween(Pose pose1, Pose pose2);
+  double angleBetween(Pose pose1, Pose pose2);
   bool ifBackward(Pose last_pose, Pose current_pose);
   int getBehavior(Pose last_pose, Pose current_pose);
   //
@@ -88,6 +86,7 @@ public:
   void buildStcmMap(std::string map_savepath);
   void loadStcmMap(std::string map_path);
   //
-  void teach(std::string data_savepath);
-  void replay(std::string data_path);
+  void record(std::string task_name, int max_time_steps, int frequency,
+              int start_episode);
+  void replay(std::string task_name);
 };
