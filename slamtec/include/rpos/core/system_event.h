@@ -41,8 +41,7 @@ namespace rpos {
             InternalSystemEventTakeElevatorOccupied,
             InternalSystemEventTurningRoundInElevator,
             InternalSystemEventEnterElevatorPathFound,
-            InternalSystemEventNarrowCorridor,
-            InternalSystemEventCurrentPoseOccupied
+            InternalSystemEventNarrowCorridor
         };
 
     }

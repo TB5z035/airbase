@@ -81,7 +81,6 @@ namespace rpos {
 
             core::Location getLocation();
             core::Pose getPose();
-            core::Pose getOdoPose();
             bool setPose(const core::Pose& pose);
             bool getMapLocalization();
             bool setMapLocalization(bool localization);

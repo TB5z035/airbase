@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * Slamtec Robot Go Action and Get Path Demo
  *
@@ -33,10 +35,8 @@ using namespace rpos::features::artifact_provider;
 using namespace rpos::features::location_provider;
 using namespace rpos::features::motion_planner;
 
-std::string redmsg = "\033[31m";
-std::string resetmsg = "\033[0m";
-std::string ipaddress = "";
-const char *ipReg = "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}";
+extern const char *ipReg;
+extern std::string ipaddress;
 
 void showHelp(std::string appName);
 bool parseCommandLine(int argc, const char *argv[]);
@@ -46,16 +46,16 @@ class AirBase {
 private:
   //
   bool running = true;
-  bool release_brake = false;
+  bool base_lock = true;
   int save_delay = 100;
   float angle_factor = 2.7;
   float angle_threshold = 10 * save_delay / 1000;
   float distance_threshold = 0.1 * save_delay / 1000;
   enum Behavior { stoping, moving, rotating, backwarding };
   //
-  std::vector<Pose> &poseVec;
-  std::vector<int64_t> &timestampVec;
-  std::vector<int> &behaviorVec;
+  std::vector<Pose> poseVec;
+  std::vector<int64_t> timestampVec;
+  std::vector<int> behaviorVec;
   int vecSize;
   //
   Pose currentPose;
@@ -68,10 +68,12 @@ protected:
 public:
   SlamwareCorePlatform platform;
   //
-  AirBase();
+  AirBase(int argc, const char *argv[]);
   ~AirBase();
   //
   void printPose();
+  bool getBaseLockState();
+  void setBaseLockState(bool lockState);
   void saveDataToJson(const std::string &filename);
   void loadDataFromJson(const std::string &filename);
   //
@@ -83,9 +85,9 @@ public:
   void moveToByTrack(Point targetPoint);
   void moveToOrigin();
   //
+  void buildStcmMap(std::string map_savepath);
+  void loadStcmMap(std::string map_path);
+  //
   void teach(std::string data_savepath);
   void replay(std::string data_path);
-  //
-  void buildMap(std::string map_savepath);
-  void loadMap(std::string map_path);
 };

@@ -1,5 +1,8 @@
 #include "airbase.hpp"
 
+const char *ipReg = "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}";
+std::string ipaddress = "";
+
 void showHelp(std::string appName) {
   std::cout << "SLAMWARE console demo." << std::endl
             << "Usage: " << appName << " <slamware_address>" << std::endl;
@@ -36,6 +39,33 @@ inline time_t getCurrentTime() {
       .count();
 }
 
+AirBase::AirBase(int argc, const char *argv[]) {
+  if (!parseCommandLine(argc, argv)) {
+    return;
+  }
+  try {
+    platform = SlamwareCorePlatform::connect(argv[1], 1445);
+    std::cout << "SDK Version: " << platform.getSDKVersion() << std::endl;
+    std::cout << "SDP Version: " << platform.getSDPVersion() << std::endl;
+  } catch (ConnectionTimeOutException &e) {
+    std::cerr << e.what() << std::endl;
+    return;
+  } catch (ConnectionFailException &e) {
+    std::cerr << e.what() << std::endl;
+    return;
+  }
+  std::cout << "Connection Successfully" << std::endl;
+  printPose();
+  int battPercentage = platform.getBatteryPercentage();
+  std::cout << "Battery: " << battPercentage << "%" << std::endl;
+  std::cout << "\n ------------- robot base inited ------------- \n"
+            << std::endl;
+}
+
+AirBase::~AirBase() {
+  platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
+}
+
 bool AirBase::StcmMapWriter(const std::string file_name) {
   CompositeMap composite_map = platform.getCompositeMap();
   CompositeMapWriter composite_map_writer;
@@ -66,6 +96,18 @@ void AirBase::printPose() {
   std::cout << "yaw: " << pose.yaw() << "\n" << std::endl;
 }
 
+bool AirBase::getBaseLockState() { return base_lock; }
+void AirBase::setBaseLockState(bool lockState) {
+  base_lock = lockState;
+  if (base_lock) {
+    platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
+                                SYSVAL_BRAKE_RELEASE_OFF);
+  } else {
+    platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
+                                SYSVAL_BRAKE_RELEASE_ON);
+  }
+};
+
 void AirBase::saveDataToJson(const std::string &filename) {
   json jsonData;
 
@@ -85,7 +127,6 @@ void AirBase::saveDataToJson(const std::string &filename) {
 }
 
 void AirBase::loadDataFromJson(const std::string &filename) {
-
   std::ifstream inputFile(filename);
 
   json jsonData;
@@ -143,25 +184,26 @@ int AirBase::getBehavior(Pose last_pose, Pose current_pose) {
   if ((angle > angle_threshold) &&
       (distance < angle_factor * distance_threshold)) {
     std::cout << "angle: " << std::fixed << std::setprecision(5) << angle
-              << "\n\rcar is rotating     |⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳\n\r";
+              << "\n\rcar is rotating     |⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳⟳\n\r";
     return rotating;
   }
   if (distance < distance_threshold) {
 
     std::cout << "distance: " << std::fixed << std::setprecision(5) << distance
-              << "\n\rcar is stoping      |................\n\r";
+              << "\n\rcar is stoping      |...............................\n\r";
     return stoping;
 
   } else {
     std::cout << "distance: " << std::fixed << std::setprecision(5) << distance;
     if (ifBackward(last_pose, current_pose)) {
-      std::cout << "\n\rcar is backwarding  |▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼\n\r";
+      std::cout << "\n\rcar is backwarding  |▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼\n\r";
       return backwarding;
     } else {
-      std::cout << "\n\rcar is moving       |▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲\n\r";
+      std::cout << "\n\rcar is moving       |▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲\n\r";
       return moving;
     }
   }
+  refresh();
 }
 
 void AirBase::moveToByTrack(Point targetPoint) {
@@ -175,6 +217,7 @@ void AirBase::moveToByTrack(Point targetPoint) {
   platform.addLine(ArtifactUsageVirtualTrack, pathLine);
   options.flag =
       MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
+      // MoveOptionFlag(MoveOptionFlagKeyPoints);
   moveAction =
       platform.moveTo(Location(targetPoint.x(), targetPoint.y(), 0), options);
   moveAction.waitUntilDone();
@@ -191,129 +234,12 @@ void AirBase::moveToOrigin() {
   std::cout << std::endl;
 }
 
-void AirBase::teach(std::string data_savepath) {
-  release_brake = true;
-  std::cout << "Press the space bar to begin teaching, Press again to stop\n"
-            << std::endl;
-  printw("Press SPACE to start/stop. Press 'q' to drop data. Press 's' to save "
-         "data and return.\n");
-  refresh();
-
-  bool running = false;
-  int ch;
-
-  while ((ch = getch()) != 'q') {
-    if (ch == ' ') {      // 如果按下空格键
-      running = !running; // 切换运行状态
-      if (running)
-        printw("Running...\n");
-      else
-        printw("Stopped.\n");
-      refresh();
-    }
-
-    if (running) {
-      currentPose = platform.getPose();
-      int64_t current_time = getCurrentTime();
-      poseVec.emplace_back(currentPose);
-      timestampVec.emplace_back(current_time);
-      behaviorVec.emplace_back(getBehavior(lastPose, currentPose));
-      lastPose = currentPose;
-      boost::this_thread::sleep_for(boost::chrono::milliseconds(save_delay));
-    }
-
-    if (ch == 's') {
-      saveDataToJson(data_savepath);
-      return;
-    }
-
-    if (ch == 'q') {
-      poseVec.clear();
-      timestampVec.clear();
-      behaviorVec.clear();
-      vecSize = 0;
-    }
-  }
-
-  endwin();
-}
-
-void AirBase::replay(std::string data_path) {
-  release_brake = false;
-  std::cout << "------------ replay start ------------\n " << std::endl;
-  MoveAction action = platform.getCurrentAction();
-  loadDataFromJson(data_path);
-
-  std::vector<Line> lines;
-  for (size_t i = 0; i < vecSize - 1; ++i) {
-    lines.emplace_back(Line(Point(poseVec[i].x(), poseVec[i].y()),
-                            Point(poseVec[i + 1].x(), poseVec[i + 1].y())));
-  }
-  platform.clearLines(ArtifactUsageVirtualTrack);
-  platform.addLines(ArtifactUsageVirtualTrack, lines);
-
-  std::vector<Pose> poseTogo;
-  std::vector<int64_t> timestampTogo;
-  std::vector<int> behaviorTogo;
-  for (int i = 0; i < vecSize - 1; i++) {
-    if (behaviorVec[i] == behaviorVec[i + 1]) {
-      continue;
-    }
-    poseTogo.emplace_back(poseVec[i]);
-    timestampTogo.emplace_back(timestampVec[i]);
-    behaviorTogo.emplace_back(behaviorVec[i]);
-  }
-
-  auto beginTime = getCurrentTime();
-  for (size_t i = 0; i < poseTogo.size(); i++) {
-
-    rpos::actions::MoveAction moveAction = platform.getCurrentAction();
-    MoveOptions options;
-    options.flag = MoveOptionFlag(MoveOptionFlagKeyPoints);
-
-    switch (behaviorTogo[i]) {
-    case moving:
-    case stoping: {
-      std::cout << "\n[" << i << "/" << poseTogo.size() - 1 << "] Moving to: ";
-      std::cout << "x: " << poseTogo[i].x() << ", ";
-      std::cout << "y: " << poseTogo[i].y() << std::endl;
-      moveAction = platform.moveTo(
-          Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
-      moveAction.waitUntilDone();
-    } break;
-    case rotating: {
-      std::cout << "\n[" << i << "/" << poseTogo.size() - 1
-                << "] Rotating to: ";
-      std::cout << "yaw: " << poseTogo[i].yaw() << std::endl;
-      options.flag = MoveOptionFlag(MoveOptionFlagKeyPoints);
-      moveAction = platform.rotateTo(Rotation(poseTogo[i].yaw(), 0, 0));
-      moveAction.waitUntilDone();
-    } break;
-    case backwarding: {
-      options.mode = NavigationMode(NavigationModeReverseWalk);
-      moveAction = platform.moveTo(
-          Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
-      moveAction.waitUntilDone();
-    }
-    default:
-      break;
-    }
-
-    auto currentTime = getCurrentTime();
-    while ((currentTime - beginTime) < (timestampTogo[i] - timestampVec[0])) {
-      boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-      currentTime = getCurrentTime();
-    }
-  }
-  std::cout << "------------ replay finish ------------\n " << std::endl;
-}
-
-void AirBase::buildMap(std::string map_savepath) {
+void AirBase::buildStcmMap(std::string map_savepath) {
   char ch;
   std::string tmp;
   std::cout << "Rebuild map\n" << std::endl;
   std::cout << "--------Begin build map-------------\n" << std::endl;
-  release_brake = true;
+  setBaseLockState(false);
   std::cout << "\nPlease move the robot base to the origin and press Enter"
             << std::endl;
   getline(std::cin, tmp);
@@ -345,7 +271,7 @@ void AirBase::buildMap(std::string map_savepath) {
   printPose();
 
   std::cout << "--------End build map-------------\n" << std::endl;
-  release_brake = false;
+  setBaseLockState(true);
 
   std::cout << "input 'o' move to origin, else to skip" << std::endl;
   std::cin >> ch;
@@ -356,8 +282,8 @@ void AirBase::buildMap(std::string map_savepath) {
   printPose();
 }
 
-void AirBase::loadMap(std::string map_path) {
-  release_brake = false;
+void AirBase::loadStcmMap(std::string map_path) {
+  setBaseLockState(true);
   std::cout << "Load map\n" << std::endl;
   std::cout << "--------Begin load map-------------" << std::endl;
   StcmMapReader(map_path);
@@ -379,4 +305,149 @@ void AirBase::loadMap(std::string map_path) {
   printPose();
 
   std::cout << "--------End load map-------------" << std::endl;
+}
+
+void AirBase::teach(std::string data_savepath) {
+  setBaseLockState(false);
+  initscr();
+  noecho();
+  cbreak();
+  nodelay(stdscr, TRUE);
+  printw("Press SPACE to start/stop. Press 'q' to drop data. Press 's' to save "
+         "data and return.\n");
+  refresh();
+  start_color(); // Enable color
+  init_pair(1, COLOR_CYAN, COLOR_BLACK);
+  init_pair(2, COLOR_RED, COLOR_BLACK);
+  init_pair(3, COLOR_GREEN, COLOR_BLACK);
+
+  bool running = false;
+  int ch;
+
+  while ((ch = getch()) != 'q') {
+    clear();
+    printw("Press SPACE to start/stop collect data\n\r"
+           "Press 'd' to drop data\n\r"
+           "Press 's' to save data\n\r"
+           "Press 'q' to quit\n\r\n\r");
+
+    if (ch == ' ') {
+      running = !running;
+    }
+
+    if (running) {
+      attron(COLOR_PAIR(1)); // Turn on blue color attribute
+      printw("Recording\n\r");
+      attroff(COLOR_PAIR(1)); // Turn off blue color attribute
+    } else {
+      attron(COLOR_PAIR(2)); // Turn on red color attribute
+      printw("Not recording.\n\r");
+      attroff(COLOR_PAIR(2)); // Turn off red color attribute
+    }
+
+    if(vecSize != 0){
+      attron(COLOR_PAIR(3)); // Turn on green color attribute
+      printw("\n\rdata collected.\n\r");
+      attroff(COLOR_PAIR(3)); // Turn off green color attribute
+    }
+
+    if (running) {
+      currentPose = platform.getPose();
+      int64_t current_time = getCurrentTime();
+      poseVec.emplace_back(currentPose);
+      timestampVec.emplace_back(current_time);
+      behaviorVec.emplace_back(getBehavior(lastPose, currentPose));
+      lastPose = currentPose;
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(save_delay));
+    } else if (ch == 's') {
+      saveDataToJson(data_savepath);
+      break;
+    } else if (ch == 'd') {
+      poseVec.clear();
+      timestampVec.clear();
+      behaviorVec.clear();
+      vecSize = 0;
+      printw("Data dropped !!!");
+      refresh();
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
+    } else {
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
+    }
+  }
+
+  endwin();
+  return;
+}
+
+void AirBase::replay(std::string data_path) {
+  setBaseLockState(true);
+  setBaseLockState(true);
+  std::cout << "------------ replay start ------------\n " << std::endl;
+  MoveAction action = platform.getCurrentAction();
+  loadDataFromJson(data_path);
+
+  std::vector<Line> lines;
+  for (size_t i = 0; i < vecSize - 1; ++i) {
+    lines.emplace_back(Line(Point(poseVec[i].x(), poseVec[i].y()),
+                            Point(poseVec[i + 1].x(), poseVec[i + 1].y())));
+  }
+  platform.clearLines(ArtifactUsageVirtualTrack);
+  platform.addLines(ArtifactUsageVirtualTrack, lines);
+
+  std::vector<Pose> poseTogo;
+  std::vector<int64_t> timestampTogo;
+  std::vector<int> behaviorTogo;
+  for (int i = 0; i < vecSize - 1; i++) {
+    if (behaviorVec[i] == behaviorVec[i + 1]) {
+      continue;
+    }
+    poseTogo.emplace_back(poseVec[i]);
+    timestampTogo.emplace_back(timestampVec[i]);
+    behaviorTogo.emplace_back(behaviorVec[i]);
+  }
+
+  auto beginTime = getCurrentTime();
+  for (size_t i = 0; i < poseTogo.size(); i++) {
+
+    rpos::actions::MoveAction moveAction = platform.getCurrentAction();
+    MoveOptions options;
+    options.flag =
+        MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
+        // MoveOptionFlag(MoveOptionFlagKeyPoints);
+
+    switch (behaviorTogo[i]) {
+    case moving:
+    case stoping: {
+      std::cout << "\n[" << i << "/" << poseTogo.size() - 1 << "] Moving to: ";
+      std::cout << "x: " << poseTogo[i].x() << ", ";
+      std::cout << "y: " << poseTogo[i].y() << std::endl;
+      moveAction = platform.moveTo(
+          Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
+      moveAction.waitUntilDone();
+    } break;
+    case rotating: {
+      std::cout << "\n[" << i << "/" << poseTogo.size() - 1
+                << "] Rotating to: ";
+      std::cout << "yaw: " << poseTogo[i].yaw() << std::endl;
+      moveAction = platform.rotateTo(Rotation(poseTogo[i].yaw(), 0, 0));
+      moveAction.waitUntilDone();
+    } break;
+    case backwarding: {
+      // options.mode =
+      //     NavigationMode(NavigationModeStrictVirtualTrackReverseWalk);
+      moveAction = platform.moveTo(
+          Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
+      moveAction.waitUntilDone();
+    }
+    default:
+      break;
+    }
+
+    auto currentTime = getCurrentTime();
+    while ((currentTime - beginTime) < (timestampTogo[i] - timestampVec[0])) {
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
+      currentTime = getCurrentTime();
+    }
+  }
+  std::cout << "------------ replay finish ------------\n " << std::endl;
 }

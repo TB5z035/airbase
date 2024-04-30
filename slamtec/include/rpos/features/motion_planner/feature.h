@@ -33,8 +33,7 @@ namespace rpos {
                 NavigationModeStrictVirtualTrack,
                 NavigationModePriorityVirtualTrack,
                 NavigationModeFollowPathPoints,
-                NavigationModeReverseWalk,
-                NavigationModeStrictVirtualTrackReverseWalk
+                NavigationModeReverseWalk
             };
 
             enum MoveOptionFlag
@@ -77,8 +76,6 @@ namespace rpos {
 
                 bool hasFlag(MoveOptionFlag flag);
                 void addFlag(MoveOptionFlag flag);
-
-                bool hasMode(NavigationMode mode);
             };
 
             enum RecoverLocalizationMovement
@@ -238,7 +235,6 @@ namespace rpos {
             std::vector<rpos::core::Location> doMultTaskDispatch(boost::optional<rpos::core::Location> & startPoint, std::vector<rpos::core::Location> passPoints,boost::optional<rpos::core::Location>& endPoint);
             bool searchElevatorPath(const std::string& elevatorID, int timeoutInMs);
             bool checkOccupied(const rpos::core::Pose& pose, rpos::features::motion_planner::CheckOccupiedKinds kinds);
-            rpos::message::base::MotionRequest getSpeed();
         };
 
     }

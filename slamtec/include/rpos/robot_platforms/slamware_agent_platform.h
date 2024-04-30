@@ -217,7 +217,7 @@ namespace rpos { namespace robot_platforms {
         actions::MoveAction goHome(const rpos::features::motion_planner::GoHomeOptions& options);
 
         std::vector<rpos::core::Location> doMultTaskDispatch(boost::optional<rpos::core::Location>& startPoint, std::vector<rpos::core::Location> passPoints, boost::optional<rpos::core::Location>& endPoint);
-        rpos::message::base::MotionRequest getSpeed();
+
     public:
         // System Resource APIs
         /// Base related APIs

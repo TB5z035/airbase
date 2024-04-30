@@ -136,7 +136,6 @@ namespace rpos { namespace robot_platforms {
         bool setLaserLandmarks(const std::vector<rpos::core::PoseEntry>& landmarks);
         std::vector<rpos::core::PoseEntry> getCurrentLaserLandmarks();
         bool setLaserLandmarkUpdate(bool update);
-        bool getLaserLandmarkUpdate();
         bool removeLaserLandmarks(const std::vector<core::SegmentID>& ids);
         bool clearLaserLandmarks();
 
@@ -162,7 +161,6 @@ namespace rpos { namespace robot_platforms {
         core::Location getLocation();
 
         core::Pose getPose();
-        core::Pose getOdoPose();
 
         bool setPose(const core::Pose& pose);
 
@@ -279,9 +277,6 @@ namespace rpos { namespace robot_platforms {
         std::vector<rpos::core::Location> doMultTaskDispatch(boost::optional<rpos::core::Location>& startPoint, std::vector<rpos::core::Location> passPoints, boost::optional<rpos::core::Location>& endPoint);
 
         void setNeighborRobots(const std::vector<rpos::message::schedule::NeighborRobotInfo>& robots);
-
-        rpos::message::base::MotionRequest getSpeed();
-
     public:
         //Sweep Motion Planner APIs
         actions::SweepMoveAction startSweep(); 
