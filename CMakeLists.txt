@@ -3,7 +3,7 @@ project(airbase LANGUAGES CXX VERSION 1.0.0)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_STANDARD 17)
+# set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -20,12 +20,6 @@ find_package(
   Python
   COMPONENTS Interpreter Development
   REQUIRED)
-
-add_subdirectory(pybind11)
-pybind11_add_module(airbase src/python_interface.cpp)
-target_link_libraries(airbase PRIVATE Python::Python airbot_play)
-
-target_compile_definitions(airbase PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
 
 include_directories(${JSON_INCLUDE_DIR} ${SLAMTEC_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/src)
 link_directories(${SLAMTEC_LIB_DIR})
@@ -65,5 +59,11 @@ target_link_libraries(airbase
 add_executable(mobileAloha ${CMAKE_SOURCE_DIR}/examples/mobileAloha.cpp)
 target_link_libraries(mobileAloha airbase)
 
-# add_executable(keyboardControl ${CMAKE_SOURCE_DIR}/examples/keyboardControl.cpp)
-# target_link_libraries(keyboardControl airbase)
+add_executable(keyboardControl ${CMAKE_SOURCE_DIR}/examples/keyboardControl.cpp)
+target_link_libraries(keyboardControl airbase)
+
+add_subdirectory(pybind11)
+pybind11_add_module(airbase_py src/python_interface.cpp)
+target_link_libraries(airbase_py PRIVATE Python::Python airbase)
+
+target_compile_definitions(airbase_py PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
