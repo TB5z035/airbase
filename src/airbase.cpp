@@ -180,23 +180,23 @@ int AirBase::get_current_behavior(Pose last_pose, Pose current_pose) {
       }
     }
   }
-  // switch (current_behavior) {
-  //   case FORWARD:
-  //     std::cout << "car is FORWARD   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ | distance: " << distance << std::endl;
-  //     break;
-  //   case BACKWARD:
-  //     std::cout << "car is BACKWARD  | vvvvvvvvvvvvvvvvvvvvvvvvvvv | distance: " << distance << std::endl;
-  //     break;
-  //   case TURNLEFT:
-  //     std::cout << "car is TURNLEFT  | <<<<<<<<<<<<<<<<<<<<<<<<<<< |    angle: " << angle << std::endl;
-  //     break;
-  //   case TURNRIGHT:
-  //     std::cout << "car is TURNRIGHT | >>>>>>>>>>>>>>>>>>>>>>>>>>> |    angle: " << angle << std::endl;
-  //     break;
-  //   case STOP:
-  //     std::cout << "car is STOP      | ........................... | distance: " << distance << std::endl;
-  //     break;
-  // }
+  switch (current_behavior) {
+    case FORWARD:
+      std::cout << "car is FORWARD   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ | distance: " << distance << std::endl;
+      break;
+    case BACKWARD:
+      std::cout << "car is BACKWARD  | vvvvvvvvvvvvvvvvvvvvvvvvvvv | distance: " << distance << std::endl;
+      break;
+    case TURNLEFT:
+      std::cout << "car is TURNLEFT  | <<<<<<<<<<<<<<<<<<<<<<<<<<< |    angle: " << angle << std::endl;
+      break;
+    case TURNRIGHT:
+      std::cout << "car is TURNRIGHT | >>>>>>>>>>>>>>>>>>>>>>>>>>> |    angle: " << angle << std::endl;
+      break;
+    case STOP:
+      std::cout << "car is STOP      | ........................... | distance: " << distance << std::endl;
+      break;
+  }
   return current_behavior;
 }
 
@@ -302,174 +302,70 @@ void AirBase::record_trajectory(std::string task_name, int max_time_steps, int f
   angle_threshold = 10.0 / frequency;
   distance_threshold = 0.05 / frequency;
   set_baselock_state(false);
-  // std::cout << "------------ teach start ------------\n " << std::endl;
+  std::cout << "------------ teach start ------------\n " << std::endl;
 
-  int ch;
-  std::thread teach;
-  bool teaching = false;
   int current_time_step = 0;
-  int _current_time_step = 0;
-  int current_behavior = 0;
-  int _current_behavior = 0;
-  initscr();
-  noecho();
-  cbreak();
-  nodelay(stdscr, TRUE);
-  start_color();
-  init_pair(1, COLOR_CYAN, COLOR_BLACK);
-  init_pair(2, COLOR_RED, COLOR_BLACK);
-  init_pair(3, COLOR_GREEN, COLOR_BLACK);
-  while ((ch = getch()) != 'q' || (ch = getch()) != 'Q') {
-    clear();
-    printw(
-        "Data Collect Mode [episode: %d]\n\r\n\r"
-        "Press 'Space' to start/stop collect data\n\r"
-        "Press 'd' to drop collected data\n\r"
-        "Press 's' to save collected data\n\r"
-        "Press 'r' to remember a position\n\r"
-        "Press 'o' to move the RobotBase to the remembered position\n\r"
-        "Press 'q' to quit data collect mode \n\r\n\r",
-        episode_);
-    refresh();
-    if (ch == ' ') {
-      teaching = !teaching;
-    }
-    if (teaching) {
-      std::unique_lock<std::mutex> lock(datalock);
-      current_time_step = _current_time_step;
-      current_behavior = _current_behavior;
-      lock.unlock();
-      if (current_time_step == 0) {
-        teach = std::thread([&]() {
-          Pose last_pose = platform.getPose();
-          time_t last_timestamp = get_current_time();
-          while (teaching && (current_time_step < max_time_steps)) {
-            Pose current_pose = platform.getPose();
-            time_t current_time = get_current_time();
-            pose_vec_.emplace_back(current_pose);
-            timestamp_vec_.emplace_back(current_time);
-            auto behavior = get_current_behavior(last_pose, current_pose);
-            behavior_vec_.emplace_back(behavior);
-            if (get_current_time() - last_timestamp < 1000.0 / frequency) {
-              boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-            }
-            last_timestamp = current_time;
-            last_pose = current_pose;
-            std::unique_lock<std::mutex> lock(datalock);
-            _current_time_step++;
-            _current_behavior = behavior;
-            lock.unlock();
-          }
-          teaching = false;
-        });
+  int ch;
+  std::string tmp;
+  bool teaching = true;
+  std::thread teach([&]() {
+    Pose last_pose = platform.getPose();
+    time_t last_timestamp = get_current_time();
+    while (teaching && (current_time_step < max_time_steps)) {
+      std::cout << "[" << current_time_step << "/" << max_time_steps << "] ";
+      Pose current_pose = platform.getPose();
+      time_t current_time = get_current_time();
+      pose_vec_.emplace_back(current_pose);
+      timestamp_vec_.emplace_back(current_time);
+      auto behavior = get_current_behavior(last_pose, current_pose);
+      behavior_vec_.emplace_back(behavior);
+      if (get_current_time() - last_timestamp < 1000.0 / frequency) {
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
       }
-      if (current_time_step < max_time_steps) {
-        attron(COLOR_PAIR(1));
-        printw("\n\rRecording\n\r\n\r");
-        printw("Collecting %d/%d steps\n\r", current_time_step + 1, max_time_steps);
-        attroff(COLOR_PAIR(1));
-        switch (current_behavior) {
-          case FORWARD:
-            printw("car is FORWARD   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^");  //| distance: %.5f", distance);
-            break;
-          case BACKWARD:
-            printw("car is BACKWARD  | vvvvvvvvvvvvvvvvvvvvvvvvvvv ");  // distance: %.5f", distance);
-            break;
-          case TURNLEFT:
-            printw("car is TURNLEFT  | <<<<<<<<<<<<<<<<<<<<<<<<<<< ");  // angle: %.5f", angle);
-            break;
-          case TURNRIGHT:
-            printw("car is TURNRIGHT | >>>>>>>>>>>>>>>>>>>>>>>>>>> ");  // angle: %.5f", angle);
-            break;
-          case STOP:
-            printw("car is STOP     | .......................... ");  // distance: %.5f", distance);
-            break;
-        }
-        refresh();
-      } else {
-        attron(COLOR_PAIR(3));
-        printw("\n\rdata collected.\n\r");
-        attroff(COLOR_PAIR(3));
-        if (ch == 's') {
-          std::string dataname = "base_data/raw/" + task_name + "/" + std::to_string(episode_++) + ".json";
-          save_data_to_json(dataname);
-          pose_vec_.clear();
-          timestamp_vec_.clear();
-          behavior_vec_.clear();
-          vec_size_ = 0;
-          current_time_step = 0;
-          teaching = false;
-          //
-          attron(COLOR_PAIR(3));
-          printw(("\ncollected data saved to " + dataname + "\n\r").c_str());
-          attroff(COLOR_PAIR(3));
-          refresh();
-          boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
-        }
-        refresh();
+      last_timestamp = current_time;
+      last_pose = current_pose;
+      current_time_step++;
+    }
+    teaching = false;
+  });
+  while (true) {
+
+    std::getline(std::cin, tmp);
+
+    teaching = !teaching;
+
+    if (current_time_step >= max_time_steps) {
+      std::cout << "\033[36m Data Collected!\n\033[0m" << std::endl;
+      std::cin >> ch;
+      std::cin.ignore();
+      if (ch == 's') {
+        std::string dataname = "base_data/raw/" + task_name + "/" + std::to_string(episode_) + ".json";
+        save_data_to_json(dataname);
+        break;
+      } else if (ch == 'd') {
+        teaching = false;
+        pose_vec_.clear();
+        timestamp_vec_.clear();
+        behavior_vec_.clear();
+        vec_size_ = 0;
+        current_time_step = 0;
+        std::cout << "\033[31m Data Droped!\n\033[0m" << std::endl;
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
+        break;
       }
     } else {
-      attron(COLOR_PAIR(2));
-      printw("not recording \n\r");
-      attroff(COLOR_PAIR(2));
-      boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
-    }
-    if (ch == 'd') {
+      teaching = false;
       pose_vec_.clear();
       timestamp_vec_.clear();
       behavior_vec_.clear();
       vec_size_ = 0;
       current_time_step = 0;
-      teaching = false;
-      //
-      attron(COLOR_PAIR(2));
-      printw("data dropped !\n\r");
-      attroff(COLOR_PAIR(2));
-      refresh();
+      std::cout << "\033[31m \nData collect cancled! \033[0m" << std::endl;
       boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
     }
   }
 
-  endwin();
-  teach.join();
-
-  // while (true) {
-  //   std::cin >> ch;
-  //   std::cin.ignore();
-  //   if (ch == 'd') {
-  //     teaching = false;
-  //     pose_vec_.clear();
-  //     timestamp_vec_.clear();
-  //     behavior_vec_.clear();
-  //     vec_size_ = 0;
-  //     current_time_step = 0;
-  //     std::cout << "\033[31m Data Droped!\n\033[0m" << std::endl;
-  //     boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
-  //     break;
-  //   }
-  //   if (current_time_step == max_time_steps) {
-  //     std::cout << "\033[36m Data Collected!\n\033[0m" << std::endl;
-  //     std::cin >> ch;
-  //     std::cin.ignore();
-  //     if (ch == 's') {
-  //       std::string dataname = "base_data/raw/" + task_name + "/" + std::to_string(episode_) + ".json";
-  //       save_data_to_json(dataname);
-  //       break;
-  //     } else if (ch == 'd') {
-  //       teaching = false;
-  //       pose_vec_.clear();
-  //       timestamp_vec_.clear();
-  //       behavior_vec_.clear();
-  //       vec_size_ = 0;
-  //       current_time_step = 0;
-  //       std::cout << "\033[31m Data Droped!\n\033[0m" << std::endl;
-  //       boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
-  //       break;
-  //     }
-  //   }
-  // }
-
-  // std::cout << "------------ teach finish ------------\n " << std::endl;
+  std::cout << "------------ teach finish ------------\n " << std::endl;
   set_baselock_state(true);
   return;
 }
