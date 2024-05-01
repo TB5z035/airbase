@@ -35,7 +35,7 @@ if __name__ == "__main__":
         print("Please select option:")
         print("0. unlock the base")
         print("1. rebuild the map")
-        print("2. load the map from local file(please move car close to the origin)")
+        print("2. load the map from local file (please move car close to the origin)")
         key = input("Please input the option and press Enter:")
         if key == "0":
             airbase.set_base_lock_state(airbase.get_base_lock_state())
