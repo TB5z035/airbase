@@ -1,8 +1,7 @@
 #include "airbase.hpp"
 
-inline time_t getCurrentTime() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
+inline time_t get_current_time() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
       .count();
 }
 
@@ -21,36 +20,32 @@ AirBase::AirBase(std::string ip) {
   std::cout << "Connection Successfully!" << std::endl;
   int battPercentage = platform.getBatteryPercentage();
   std::cout << "Battery: " << battPercentage << "%" << std::endl;
-  std::cout << "\n ------------- robot base inited ------------- \n"
-            << std::endl;
-  setBaseLockState(true);
+  std::cout << "\n ------------- robot base inited ------------- \n" << std::endl;
+  set_baselock_state(true);
 }
 
-AirBase::~AirBase() { setBaseLockState(true); }
+AirBase::~AirBase() { set_baselock_state(true); }
 
-bool AirBase::StcmMapWriter(const std::string file_name) {
+bool AirBase::_stcm_map_writer(const std::string file_name) {
   CompositeMap composite_map = platform.getCompositeMap();
   CompositeMapWriter composite_map_writer;
   std::string error_message;
-  bool result =
-      composite_map_writer.saveFile(error_message, file_name, composite_map);
+  bool result = composite_map_writer.saveFile(error_message, file_name, composite_map);
   return result;
 }
 
-bool AirBase::StcmMapReader(const std::string file_path) {
+bool AirBase::_stcm_map_reader(const std::string file_path) {
   CompositeMapReader composite_map_reader;
   std::string error_message;
-  boost::shared_ptr<CompositeMap> composite_map(
-      composite_map_reader.loadFile(error_message, file_path));
+  boost::shared_ptr<CompositeMap> composite_map(composite_map_reader.loadFile(error_message, file_path));
   if (composite_map) {
-    platform.setCompositeMap((*composite_map),
-                             Pose(Location(0, 0), Rotation(0, 0, 0)));
+    platform.setCompositeMap((*composite_map), Pose(Location(0, 0), Rotation(0, 0, 0)));
     return true;
   }
   return false;
 }
 
-void AirBase::printPose() {
+void AirBase::print_pose() {
   Pose pose = platform.getPose();
   std::cout << "Robot Pose: " << std::endl;
   std::cout << "x: " << pose.x() << ", ";
@@ -58,63 +53,59 @@ void AirBase::printPose() {
   std::cout << "yaw: " << pose.yaw() << std::endl;
 }
 
-bool AirBase::getBaseLockState() { return baseLock_; }
-void AirBase::setBaseLockState(bool lockState) {
-  baseLock_ = lockState;
-  if (baseLock_) {
-    platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
-                                SYSVAL_BRAKE_RELEASE_OFF);
+bool AirBase::get_baselock_state() { return base_lock_; }
+void AirBase::set_baselock_state(bool lockState) {
+  base_lock_ = lockState;
+  if (base_lock_) {
+    platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
   } else {
-    platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
-                                SYSVAL_BRAKE_RELEASE_ON);
+    platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_ON);
   }
 };
 
-int AirBase::getCurrentEpisode(){
-  return episode_;
-}
+int AirBase::get_current_episode() { return episode_; }
 
-void AirBase::saveDataToJson(const std::string &filename) {
+void AirBase::save_data_to_json(const std::string &filename) {
   json jsonData;
 
   // data clean
-  int behaviorCnt = 0; // for fixing noise behaviors
+  int behaviorCnt = 0;  // for fixing noise behaviors
   int last_valid_behavior = 0;
-  for (int i = 0; i < poseVec.size() - 1; i++) {
-    if (behaviorVec[i] == behaviorVec[i + 1]) {
+  for (int i = 0; i < pose_vec_.size() - 1; i++) {
+    if (behavior_vec_[i] == behavior_vec_[i + 1]) {
       behaviorCnt++;
       continue;
     }
     if (behaviorCnt <= 3) {
       for (int j = i; j >= i - 3; j--) {
-        behaviorVec[j] = behaviorVec[i - 3];
+        behavior_vec_[j] = behavior_vec_[i - 3];
       }
     } else {
-      last_valid_behavior = behaviorVec[i];
+      last_valid_behavior = behavior_vec_[i];
     }
     behaviorCnt = 0;
   }
 
-  for (size_t i = 0; i < poseVec.size(); ++i) {
-    jsonData["x"].push_back(poseVec[i].x());
-    jsonData["y"].push_back(poseVec[i].y());
-    jsonData["yaw"].push_back(poseVec[i].yaw());
-    jsonData["timestamp"].push_back(timestampVec[i]);
-    jsonData["behavior"].push_back(behaviorVec[i]);
+  for (size_t i = 0; i < pose_vec_.size(); ++i) {
+    jsonData["x"].push_back(pose_vec_[i].x());
+    jsonData["y"].push_back(pose_vec_[i].y());
+    jsonData["yaw"].push_back(pose_vec_[i].yaw());
+    jsonData["timestamp"].push_back(timestamp_vec_[i]);
+    jsonData["behavior"].push_back(behavior_vec_[i]);
   }
-  vecSize = poseVec.size();
-  jsonData["vecSize"] = vecSize;
+  vec_size_ = pose_vec_.size();
+  jsonData["vec_size_"] = vec_size_;
   std::ofstream outputFile(filename);
 
   outputFile << jsonData.dump(2);
   outputFile.close();
 
-  poseVec.clear();
-  timestampVec.clear();
-  behaviorVec.clear();
+  pose_vec_.clear();
+  timestamp_vec_.clear();
+  behavior_vec_.clear();
 }
 
-void AirBase::loadDataFromJson(const std::string &filename) {
+void AirBase::load_data_from_json(const std::string &filename) {
   std::ifstream inputFile(filename);
 
   json jsonData;
@@ -127,134 +118,89 @@ void AirBase::loadDataFromJson(const std::string &filename) {
 
   inputFile.close();
 
-  vecSize = jsonData["vecSize"];
+  vec_size_ = jsonData["vec_size_"];
 
-  for (int i = 0; i < vecSize; i++) {
+  for (int i = 0; i < vec_size_; i++) {
     try {
       double x = jsonData["x"][i];
       double y = jsonData["y"][i];
       double yaw = jsonData["yaw"][i];
       int64_t timestamp = jsonData["timestamp"][i];
       int behavior = jsonData["behavior"][i];
-      poseVec.emplace_back(Pose(Location(x, y), Rotation(yaw, 0, 0)));
-      timestampVec.emplace_back(timestamp);
-      behaviorVec.emplace_back(behavior);
+      pose_vec_.emplace_back(Pose(Location(x, y), Rotation(yaw, 0, 0)));
+      timestamp_vec_.emplace_back(timestamp);
+      behavior_vec_.emplace_back(behavior);
     } catch (json::type_error &e) {
       return;
     }
   }
 }
 
-double AirBase::distanceBetween(Pose pose1, Pose pose2) {
-  return std::sqrt((std::pow(pose1.x() - pose2.x(), 2) +
-                    std::pow(pose1.y() - pose2.y(), 2)));
+double AirBase::distance_between(Pose pose1, Pose pose2) {
+  return std::sqrt((std::pow(pose1.x() - pose2.x(), 2) + std::pow(pose1.y() - pose2.y(), 2)));
 }
 
-double AirBase::angleBetween(Pose pose1, Pose pose2) {
-  return std::fabs(pose1.yaw() - pose2.yaw()) / M_PI * 180;
-}
+double AirBase::angle_between(Pose pose1, Pose pose2) { return std::fabs(pose1.yaw() - pose2.yaw()) / M_PI * 180; }
 
-bool AirBase::ifBackward(Pose last_pose, Pose current_pose) {
+bool AirBase::if_backward(Pose last_pose, Pose current_pose) {
   double dx = current_pose.x() - last_pose.x();
   double dy = current_pose.y() - last_pose.y();
   double distance = sqrt(dx * dx + dy * dy);
   double angle = atan2(dy, dx);
   double dyaw = std::fabs(angle - last_pose.yaw());
-  return ((dyaw > M_PI * 0.6) && (dyaw < M_PI * 1.4)) &&
-                 (distance > distance_threshold)
-             ? true
-             : false;
+  return ((dyaw > M_PI * 0.6) && (dyaw < M_PI * 1.4)) && (distance > distance_threshold) ? true : false;
 }
 
-int AirBase::getBehavior(Pose last_pose, Pose current_pose) {
+int AirBase::get_current_behavior(Pose last_pose, Pose current_pose) {
   int current_behavior;
-  auto distance = distanceBetween(last_pose, current_pose);
-  auto angle = angleBetween(last_pose, current_pose);
-  if ((angle > angle_threshold) &&
-      (distance < angle_factor * distance_threshold)) {
+  auto distance = distance_between(last_pose, current_pose);
+  auto angle = angle_between(last_pose, current_pose);
+  if ((angle > angle_threshold) && (distance < angle_factor * distance_threshold)) {
     if (last_pose.yaw() < current_pose.yaw()) {
       if (current_pose.yaw() == 0) {
-        current_behavior = rightturning;
+        current_behavior = TURNRIGHT;
       } else {
-        current_behavior = leftturning;
+        current_behavior = TURNLEFT;
       }
     } else {
       if (current_pose.yaw() == 0) {
-        current_behavior = leftturning;
+        current_behavior = TURNLEFT;
       } else {
-        current_behavior = rightturning;
+        current_behavior = TURNRIGHT;
       }
     }
   } else {
     if (distance < distance_threshold) {
-      current_behavior = stopping;
+      current_behavior = STOP;
     } else {
-      if (ifBackward(last_pose, current_pose)) {
-        current_behavior = backwarding;
+      if (if_backward(last_pose, current_pose)) {
+        current_behavior = BACKWARD;
       } else {
-        current_behavior = forwarding;
+        current_behavior = FORWARD;
       }
     }
   }
-  switch (current_behavior) {
-  case forwarding:
-    std::cout
-        << "car is forwarding   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ | distance: "
-        << distance << std::endl;
-    break;
-  case backwarding:
-    std::cout
-        << "car is backwarding  | vvvvvvvvvvvvvvvvvvvvvvvvvvv | distance: "
-        << distance << std::endl;
-    break;
-  case leftturning:
-    std::cout
-        << "car is leftturning  | <<<<<<<<<<<<<<<<<<<<<<<<<<< |    angle: "
-        << angle << std::endl;
-    break;
-  case rightturning:
-    std::cout
-        << "car is rightturning | >>>>>>>>>>>>>>>>>>>>>>>>>>> |    angle: "
-        << angle << std::endl;
-    break;
-  case stopping:
-    std::cout
-        << "car is stoping      | ........................... | distance: "
-        << distance << std::endl;
-    break;
-  }
+  // switch (current_behavior) {
+  //   case FORWARD:
+  //     std::cout << "car is FORWARD   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ | distance: " << distance << std::endl;
+  //     break;
+  //   case BACKWARD:
+  //     std::cout << "car is BACKWARD  | vvvvvvvvvvvvvvvvvvvvvvvvvvv | distance: " << distance << std::endl;
+  //     break;
+  //   case TURNLEFT:
+  //     std::cout << "car is TURNLEFT  | <<<<<<<<<<<<<<<<<<<<<<<<<<< |    angle: " << angle << std::endl;
+  //     break;
+  //   case TURNRIGHT:
+  //     std::cout << "car is TURNRIGHT | >>>>>>>>>>>>>>>>>>>>>>>>>>> |    angle: " << angle << std::endl;
+  //     break;
+  //   case STOP:
+  //     std::cout << "car is STOP      | ........................... | distance: " << distance << std::endl;
+  //     break;
+  // }
   return current_behavior;
 }
 
-// int AirBase::getBehavior(Pose last_pose, Pose current_pose) {
-//   auto distance = distanceBetween(last_pose, current_pose);
-//   printw("distancd: %.8f\n\r", distance);
-//   refresh();
-//   auto angle = angleBetween(last_pose, current_pose);
-//   printw("angle: %.8f\n\r", angle);
-//   refresh();
-
-//   printw("distance_threshold: %.5f\n", distance_threshold);
-//   if ((angle > angle_threshold) &&
-//       (distance < angle_factor * distance_threshold)) {
-//     if (last_pose.yaw() < current_pose.yaw()) {
-//       return leftturning;
-//     } else {
-//       return rightturning;
-//     }
-//   }
-//   if (distance < distance_threshold) {
-//     return stopping;
-//   } else {
-//     if (ifBackward(last_pose, current_pose)) {
-//       return backwarding;
-//     } else {
-//       return forwarding;
-//     }
-//   }
-// }
-
-void AirBase::moveToByTrack(Point targetPoint) {
+void AirBase::moveTo_by_line(Point targetPoint) {
   rpos::actions::MoveAction moveAction = platform.getCurrentAction();
   Pose currentPose;
   Line pathLine;
@@ -263,47 +209,42 @@ void AirBase::moveToByTrack(Point targetPoint) {
   pathLine.startP() = Point(currentPose.x(), currentPose.y());
   pathLine.endP() = Point(targetPoint.x(), targetPoint.y());
   platform.addLine(ArtifactUsageVirtualTrack, pathLine);
-  options.flag =
-      MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
-  // MoveOptionFlag(MoveOptionFlagKeyPoints);
-  moveAction =
-      platform.moveTo(Location(targetPoint.x(), targetPoint.y(), 0), options);
+  options.flag = MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
+  moveAction = platform.moveTo(Location(targetPoint.x(), targetPoint.y(), 0), options);
   moveAction.waitUntilDone();
   platform.clearLines(ArtifactUsageVirtualTrack);
 }
 
-void AirBase::moveToOrigin() {
-  setBaseLockState(true);
-  setBaseLockState(true);
+void AirBase::move_to_origin() {
+  set_baselock_state(true);
+  set_baselock_state(true);
   platform.clearLines(ArtifactUsageVirtualTrack);
   MoveAction action = platform.getCurrentAction();
   std::cout << "\nMoving to origin" << std::endl;
-  moveToByTrack(Point(0, 0));
+  moveTo_by_line(Point(0, 0));
   action = platform.rotateTo(Rotation(0, 0, 0));
   action.waitUntilDone();
   std::cout << std::endl;
 }
 
-void AirBase::buildStcmMap(std::string map_savepath) {
+void AirBase::build_stcm_map(std::string map_savepath) {
   char ch;
   std::string tmp;
   std::cout << "Rebuild map\n" << std::endl;
   std::cout << "--------Begin build map-------------\n" << std::endl;
-  setBaseLockState(false);
-  std::cout << "\nPlease move the robot base to the origin and press Enter"
-            << std::endl;
+  set_baselock_state(false);
+  std::cout << "\nPlease move the robot base to the origin and press Enter" << std::endl;
   getline(std::cin, tmp);
   platform.setPose(Pose(Location(0, 0), Rotation(0, 0, 0)));
   platform.clearMap();
-  std::cout << "Origin setted. Look RoboStudio for checking map status"
-            << std::endl;
+  std::cout << "Origin setted. Look RoboStudio for checking map status" << std::endl;
   std::cout << "\nPlease move the robot base to build map, and press 's' "
                "to finish build and save map, press 'o' to reset orgin"
             << std::endl;
   while (true) {
     std::cin >> ch;
     if (ch == 's') {
-      StcmMapWriter(map_savepath);
+      _stcm_map_writer(map_savepath);
       std::cout << "Build map finish!\n" << std::endl;
       break;
     } else if (ch == 'o') {
@@ -318,233 +259,239 @@ void AirBase::buildStcmMap(std::string map_savepath) {
   }
   std::cout << "Newmap saved\n" << std::endl;
 
-  printPose();
+  print_pose();
 
   std::cout << "\n--------End build map-------------\n" << std::endl;
-  setBaseLockState(true);
+  set_baselock_state(true);
 
   std::cout << "input 'o' move to origin, else to skip" << std::endl;
   std::cin >> ch;
   std::cin.ignore();
-  if (ch == 'o')
-    moveToOrigin();
+  if (ch == 'o') move_to_origin();
 
-  printPose();
+  print_pose();
 }
 
-void AirBase::loadStcmMap(std::string map_path) {
-  setBaseLockState(true);
-  setBaseLockState(true);
+void AirBase::load_stcm_map(std::string map_path) {
+  set_baselock_state(true);
+  set_baselock_state(true);
   std::cout << "Load map\n" << std::endl;
   std::cout << "--------Begin load map-------------" << std::endl;
-  StcmMapReader(map_path);
+  _stcm_map_reader(map_path);
   std::cout << "\nMap loaded!\n" << std::endl;
 
   std::cout << "Begin localization ...\n" << std::endl;
   MoveAction action = platform.getCurrentAction();
-  if (action)
-    action.cancel();
+  if (action) action.cancel();
   action = platform.recoverLocalization(rpos::core::RectangleF(0, 0, 10, 10));
   action.waitUntilDone();
 
   std::cout << "Localization finished\n" << std::endl;
 
-  printPose();
+  print_pose();
 
-  moveToOrigin();
+  move_to_origin();
 
-  printPose();
+  print_pose();
 
   std::cout << "--------End load map-------------" << std::endl;
 }
 
-void AirBase::record(std::string task_name, int max_time_steps, int frequency,
-                     int start_episode) {
+void AirBase::record_trajectory(std::string task_name, int max_time_steps, int frequency, int start_episode) {
   episode_ = (episode_ == 0 && episode_ != start_episode) ? start_episode : episode_ + 1;
   angle_threshold = 10.0 / frequency;
   distance_threshold = 0.05 / frequency;
-  setBaseLockState(false);
-  bool teaching = true;
-  std::cout << "------------ teach start ------------\n " << std::endl;
-  std::thread teach([&]() {
-    Pose last_pose = platform.getPose();
-    time_t last_timestamp = getCurrentTime();
-    while (teaching) {
-      Pose current_pose = platform.getPose();
-      time_t current_time = getCurrentTime();
-      poseVec.emplace_back(current_pose);
-      timestampVec.emplace_back(current_time);
-      int behavior = getBehavior(last_pose, current_pose);
-      behaviorVec.emplace_back(behavior);
-      // if (getCurrentTime() - lastTimestamp < 1000.0 / frequency) {
-      boost::this_thread::sleep_for(
-          boost::chrono::milliseconds(1000 / frequency));
-      // }
-      last_timestamp = current_time;
-      last_pose = current_pose;
-    }
-    std::string dataname =
-        "base_data/raw/" + task_name + "/" + std::to_string(episode_) + ".json";
-    saveDataToJson(dataname);
-  });
+  set_baselock_state(false);
+  // std::cout << "------------ teach start ------------\n " << std::endl;
 
-  std::cout << "Teaching ... , input 's' to stop teach:" << std::endl;
-  char ch;
-  while (true) {
-    std::cin >> ch;
-    std::cin.ignore();
-    if (ch == 's')
-      break;
+  int ch;
+  std::thread teach;
+  bool teaching = false;
+  int current_time_step = 0;
+  int _current_time_step = 0;
+  int current_behavior = 0;
+  int _current_behavior = 0;
+  initscr();
+  noecho();
+  cbreak();
+  nodelay(stdscr, TRUE);
+  start_color();
+  init_pair(1, COLOR_CYAN, COLOR_BLACK);
+  init_pair(2, COLOR_RED, COLOR_BLACK);
+  init_pair(3, COLOR_GREEN, COLOR_BLACK);
+  while ((ch = getch()) != 'q' || (ch = getch()) != 'Q') {
+    clear();
+    printw(
+        "Data Collect Mode [episode: %d]\n\r\n\r"
+        "Press 'Space' to start/stop collect data\n\r"
+        "Press 'd' to drop collected data\n\r"
+        "Press 's' to save collected data\n\r"
+        "Press 'r' to remember a position\n\r"
+        "Press 'o' to move the RobotBase to the remembered position\n\r"
+        "Press 'q' to quit data collect mode \n\r\n\r",
+        episode_);
+    refresh();
+    if (ch == ' ') {
+      teaching = !teaching;
+    }
+    if (teaching) {
+      std::unique_lock<std::mutex> lock(datalock);
+      current_time_step = _current_time_step;
+      current_behavior = _current_behavior;
+      lock.unlock();
+      if (current_time_step == 0) {
+        teach = std::thread([&]() {
+          Pose last_pose = platform.getPose();
+          time_t last_timestamp = get_current_time();
+          while (teaching && (current_time_step < max_time_steps)) {
+            Pose current_pose = platform.getPose();
+            time_t current_time = get_current_time();
+            pose_vec_.emplace_back(current_pose);
+            timestamp_vec_.emplace_back(current_time);
+            auto behavior = get_current_behavior(last_pose, current_pose);
+            behavior_vec_.emplace_back(behavior);
+            if (get_current_time() - last_timestamp < 1000.0 / frequency) {
+              boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
+            }
+            last_timestamp = current_time;
+            last_pose = current_pose;
+            std::unique_lock<std::mutex> lock(datalock);
+            _current_time_step++;
+            _current_behavior = behavior;
+            lock.unlock();
+          }
+          teaching = false;
+        });
+      }
+      if (current_time_step < max_time_steps) {
+        attron(COLOR_PAIR(1));
+        printw("\n\rRecording\n\r\n\r");
+        printw("Collecting %d/%d steps\n\r", current_time_step + 1, max_time_steps);
+        attroff(COLOR_PAIR(1));
+        switch (current_behavior) {
+          case FORWARD:
+            printw("car is FORWARD   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^");  //| distance: %.5f", distance);
+            break;
+          case BACKWARD:
+            printw("car is BACKWARD  | vvvvvvvvvvvvvvvvvvvvvvvvvvv ");  // distance: %.5f", distance);
+            break;
+          case TURNLEFT:
+            printw("car is TURNLEFT  | <<<<<<<<<<<<<<<<<<<<<<<<<<< ");  // angle: %.5f", angle);
+            break;
+          case TURNRIGHT:
+            printw("car is TURNRIGHT | >>>>>>>>>>>>>>>>>>>>>>>>>>> ");  // angle: %.5f", angle);
+            break;
+          case STOP:
+            printw("car is STOP     | .......................... ");  // distance: %.5f", distance);
+            break;
+        }
+        refresh();
+      } else {
+        attron(COLOR_PAIR(3));
+        printw("\n\rdata collected.\n\r");
+        attroff(COLOR_PAIR(3));
+        if (ch == 's') {
+          std::string dataname = "base_data/raw/" + task_name + "/" + std::to_string(episode_++) + ".json";
+          save_data_to_json(dataname);
+          pose_vec_.clear();
+          timestamp_vec_.clear();
+          behavior_vec_.clear();
+          vec_size_ = 0;
+          current_time_step = 0;
+          teaching = false;
+          //
+          attron(COLOR_PAIR(3));
+          printw(("\ncollected data saved to " + dataname + "\n\r").c_str());
+          attroff(COLOR_PAIR(3));
+          refresh();
+          boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
+        }
+        refresh();
+      }
+    } else {
+      attron(COLOR_PAIR(2));
+      printw("not recording \n\r");
+      attroff(COLOR_PAIR(2));
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
+    }
+    if (ch == 'd') {
+      pose_vec_.clear();
+      timestamp_vec_.clear();
+      behavior_vec_.clear();
+      vec_size_ = 0;
+      current_time_step = 0;
+      teaching = false;
+      //
+      attron(COLOR_PAIR(2));
+      printw("data dropped !\n\r");
+      attroff(COLOR_PAIR(2));
+      refresh();
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
+    }
   }
-  teaching = false;
+
+  endwin();
   teach.join();
-  setBaseLockState(true);
-  std::cout << "------------ teach finish ------------\n " << std::endl;
+
+  // while (true) {
+  //   std::cin >> ch;
+  //   std::cin.ignore();
+  //   if (ch == 'd') {
+  //     teaching = false;
+  //     pose_vec_.clear();
+  //     timestamp_vec_.clear();
+  //     behavior_vec_.clear();
+  //     vec_size_ = 0;
+  //     current_time_step = 0;
+  //     std::cout << "\033[31m Data Droped!\n\033[0m" << std::endl;
+  //     boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
+  //     break;
+  //   }
+  //   if (current_time_step == max_time_steps) {
+  //     std::cout << "\033[36m Data Collected!\n\033[0m" << std::endl;
+  //     std::cin >> ch;
+  //     std::cin.ignore();
+  //     if (ch == 's') {
+  //       std::string dataname = "base_data/raw/" + task_name + "/" + std::to_string(episode_) + ".json";
+  //       save_data_to_json(dataname);
+  //       break;
+  //     } else if (ch == 'd') {
+  //       teaching = false;
+  //       pose_vec_.clear();
+  //       timestamp_vec_.clear();
+  //       behavior_vec_.clear();
+  //       vec_size_ = 0;
+  //       current_time_step = 0;
+  //       std::cout << "\033[31m Data Droped!\n\033[0m" << std::endl;
+  //       boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
+  //       break;
+  //     }
+  //   }
+  // }
+
+  // std::cout << "------------ teach finish ------------\n " << std::endl;
+  set_baselock_state(true);
+  return;
 }
 
-// void AirBase::record(std::string task_name, int max_time_steps, int
-// frequency,
-//                      int start_episode) {
-//   static int episode = start_episode;
-//   angle_threshold = 10.0 / frequency;
-//   distance_threshold = 0.01 / frequency;
-//   setBaseLockState(false);
-//   initscr();
-//   noecho();
-//   cbreak();
-//   nodelay(stdscr, TRUE);
-//   start_color();
-//   init_pair(1, COLOR_CYAN, COLOR_BLACK);
-//   init_pair(2, COLOR_RED, COLOR_BLACK);
-//   init_pair(3, COLOR_GREEN, COLOR_BLACK);
-
-//   int ch;
-//   int current_time_steps = 0;
-
-//   while ((ch = getch()) != 'q' || (ch = getch()) != 'Q') {
-//     clear();
-//     printw("Data Collect Mode [episode: %d]\n\r\n\r"
-//            "Press 'Space' to start/stop collect data\n\r"
-//            "Press 'd' to drop collected data\n\r"
-//            "Press 's' to save collected data\n\r"
-//            "Press 'r' to remember a position\n\r"
-//            "Press 'o' to move the RobotBase to the remembered position\n\r"
-//            "Press 'q' to quit data collect mode \n\r\n\r",
-//            episode);
-
-//     if (ch == ' ') {
-//       recording = !recording;
-//     }
-
-//     if (recording) {
-//       if (current_time_steps == 0) {
-//         lastTimestamp = getCurrentTime();
-//         lastPose = platform.getPose();
-//       }
-//       if (current_time_steps <= max_time_steps) {
-//         currentTimestamp = getCurrentTime();
-//         timestampVec.emplace_back(currentTimestamp);
-//         currentPose = platform.getPose();
-//         poseVec.emplace_back(currentPose);
-//         currentBehavior = getBehavior(lastPose, currentPose);
-//         behaviorVec.emplace_back(currentBehavior);
-//         if (getCurrentTime() - lastTimestamp < 1000.0 / frequency) {
-//           boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-//         }
-//         lastTimestamp = currentTimestamp;
-//         lastPose = currentPose;
-//         attron(COLOR_PAIR(1));
-//         printw("Recording\n\r");
-//         printw("Collecting %d/%d steps\n\r", current_time_steps,
-//                max_time_steps);
-//         attroff(COLOR_PAIR(1));
-//         switch (currentBehavior) {
-//         case forwarding:
-//           printw("\n\rcar is forwarding |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\r");
-//           refresh();
-//           break;
-//         case backwarding:
-//           printw("\n\rcar is backwarding
-//           |vvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n\r"); refresh(); break;
-//         case leftturning:
-//           printw("\n\rcar is leftturning
-//           |<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\r"); refresh(); break;
-//         case rightturning:
-//           printw("\n\rcar is rightturning
-//           |>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\r"); refresh(); break;
-//         case stopping:
-//           printw("\n\rcar is stoping |.............................\n\r");
-//           refresh();
-//           break;
-//         }
-//         current_time_steps++;
-//       } else {
-//         attron(COLOR_PAIR(3));
-//         printw("\n\rdata collected.\n\r");
-//         attroff(COLOR_PAIR(3));
-//         if (ch == 's') {
-//           std::string dataname = "base_data/raw/" + task_name + "/" +
-//                                  std::to_string(episode++) + ".json";
-//           saveDataToJson(dataname);
-//           poseVec.clear();
-//           timestampVec.clear();
-//           behaviorVec.clear();
-//           vecSize = 0;
-//           current_time_steps = 0;
-//           recording = false;
-//           //
-//           attron(COLOR_PAIR(3));
-//           printw(("\ncollected data saved to " + dataname + "\n\r").c_str());
-//           attroff(COLOR_PAIR(3));
-//           refresh();
-//           boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
-//           break;
-//         }
-//         refresh();
-//       }
-//     } else {
-//       attron(COLOR_PAIR(2));
-//       printw("not recording \n\r");
-//       attroff(COLOR_PAIR(2));
-//       boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
-//     }
-//     if (ch == 'd') {
-//       poseVec.clear();
-//       timestampVec.clear();
-//       behaviorVec.clear();
-//       vecSize = 0;
-//       current_time_steps = 0;
-//       recording = false;
-//       //
-//       attron(COLOR_PAIR(2));
-//       printw("data dropped !\n\r");
-//       attroff(COLOR_PAIR(2));
-//       refresh();
-//       boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
-//     }
-//   }
-//   endwin();
-//   return;
-// }
-
-void AirBase::replay(std::string data_path) {
-  setBaseLockState(true);
-  setBaseLockState(true);
+void AirBase::replay_trajectory(std::string data_path) {
+  set_baselock_state(true);
+  set_baselock_state(true);
   std::cout << "------------ replay start ------------\n " << std::endl;
   MoveAction action = platform.getCurrentAction();
-  loadDataFromJson(data_path);
+  load_data_from_json(data_path);
 
   // select key points
   std::vector<Pose> poseTogo;
   std::vector<int64_t> timestampTogo;
   std::vector<int> behaviorTogo;
-  for (int i = 0; i < vecSize - 1; i++) {
-    if (behaviorVec[i] == behaviorVec[i + 1]) {
+  for (int i = 0; i < vec_size_ - 1; i++) {
+    if (behavior_vec_[i] == behavior_vec_[i + 1]) {
       continue;
     }
-    poseTogo.emplace_back(poseVec[i]);
-    timestampTogo.emplace_back(timestampVec[i]);
-    behaviorTogo.emplace_back(behaviorVec[i]);
+    poseTogo.emplace_back(pose_vec_[i]);
+    timestampTogo.emplace_back(timestamp_vec_[i]);
+    behaviorTogo.emplace_back(behavior_vec_[i]);
   }
 
   std::vector<Line> lines;
@@ -556,55 +503,50 @@ void AirBase::replay(std::string data_path) {
   //
 
   // build path
-  for (int i = 0; i < vecSize - 1; ++i) {
-    lines.emplace_back(Line(Point(poseVec[i].x(), poseVec[i].y()),
-                            Point(poseVec[i + 1].x(), poseVec[i + 1].y())));
+  for (int i = 0; i < vec_size_ - 1; ++i) {
+    lines.emplace_back(
+        Line(Point(pose_vec_[i].x(), pose_vec_[i].y()), Point(pose_vec_[i + 1].x(), pose_vec_[i + 1].y())));
   }
   platform.clearLines(ArtifactUsageVirtualTrack);
   platform.addLines(ArtifactUsageVirtualTrack, lines);
 
-  // excute replay
-  auto beginTime = getCurrentTime();
+  // excute replay_trajectory
+  auto beginTime = get_current_time();
   for (size_t i = 0; i < poseTogo.size(); i++) {
-
     rpos::actions::MoveAction moveAction = platform.getCurrentAction();
     MoveOptions options;
     options.mode = NavigationMode(NavigationModeStrictVirtualTrack);
-    options.flag =
-        MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
+    options.flag = MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
 
     switch (behaviorTogo[i]) {
-    case forwarding:
-    case backwarding:
-    case stopping: {
-      std::cout << "\n[" << i << "/" << poseTogo.size() - 1 << "] Moving to: ";
-      std::cout << "x: " << poseTogo[i].x() << ", ";
-      std::cout << "y: " << poseTogo[i].y() << std::endl;
-      moveAction = platform.moveTo(
-          Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
-      moveAction.waitUntilDone();
-    } break;
-    case leftturning:
-    case rightturning: {
-      std::cout << "\n[" << i << "/" << poseTogo.size() - 1
-                << "] Rotating to: ";
-      std::cout << "yaw: " << poseTogo[i].yaw() << std::endl;
-      moveAction = platform.rotateTo(Rotation(poseTogo[i].yaw(), 0, 0));
-      moveAction.waitUntilDone();
-    } break;
-    // case backwarding: {
-    //   // options.mode =
-    //   //     NavigationMode(NavigationModeStrictVirtualTrackReverseWalk);
-    //   moveAction = platform.moveTo(
-    //       Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
-    //   moveAction.waitUntilDone();
-    // }
-    default:
-      break;
+      case FORWARD:
+      case BACKWARD:
+      case STOP: {
+        std::cout << "\n[" << i << "/" << poseTogo.size() - 1 << "] Moving to: ";
+        std::cout << "x: " << poseTogo[i].x() << ", ";
+        std::cout << "y: " << poseTogo[i].y() << std::endl;
+        moveAction = platform.moveTo(Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
+        moveAction.waitUntilDone();
+      } break;
+      case TURNLEFT:
+      case TURNRIGHT: {
+        std::cout << "\n[" << i << "/" << poseTogo.size() - 1 << "] Rotating to: ";
+        std::cout << "yaw: " << poseTogo[i].yaw() << std::endl;
+        moveAction = platform.rotateTo(Rotation(poseTogo[i].yaw(), 0, 0));
+        moveAction.waitUntilDone();
+      } break;
+      // case BACKWARD: {
+      //   // options.mode =
+      //   //     NavigationMode(NavigationModeStrictVirtualTrackReverseWalk);
+      //   moveAction = platform.moveTo(
+      //       Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
+      //   moveAction.waitUntilDone();
+      // }
+      default:
+        break;
     }
 
-    while ((getCurrentTime() - beginTime) <
-           (timestampTogo[i] - timestampVec[0])) {
+    while ((get_current_time() - beginTime) < (timestampTogo[i] - timestamp_vec_[0])) {
       boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
     }
   }

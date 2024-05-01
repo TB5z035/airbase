@@ -1,17 +1,14 @@
+#include <filesystem>
+
 #include "airbase.hpp"
 #include "argparse/argparse.hpp"
-#include <filesystem>
 
 namespace fs = std::filesystem;
 
 int main(int argc, const char *argv[]) {
   argparse::ArgumentParser program("airbase");
-  program.add_argument("-tn", "--task_name")
-      .help("the baudrate for communication with Robotbase")
-      .required();
-  program.add_argument("-mn", "--map_name")
-      .help("the map name to build/load")
-      .required();
+  program.add_argument("-tn", "--task_name").help("the baudrate for communication with RobotBase").required();
+  program.add_argument("-mn", "--map_name").help("the map name to build/load").required();
   program.add_argument("-mts", "--max_time_steps")
       .scan<'i', int>()
       .help("the max time steps for each episode")
@@ -20,17 +17,12 @@ int main(int argc, const char *argv[]) {
       .scan<'i', int>()
       .help("the frequency of data collection")
       .default_value(10);
-  program.add_argument("-se", "--starting_episode")
-      .scan<'i', int>()
-      .help("the starting episode")
-      .default_value(0);
+  program.add_argument("-se", "--starting_episode").scan<'i', int>().help("the starting episode").default_value(0);
   program.add_argument("-sp", "--speed")
       .help("the speed of the RobotBase")
       .default_value("high")
       .choices("low", "medium", "high");
-  program.add_argument("-ip", "--ip_address")
-      .help("the ip address of Robotbase")
-      .default_value("192.168.11.1");
+  program.add_argument("-ip", "--ip_address").help("the ip address of RobotBase").default_value("192.168.11.1");
   try {
     program.parse_args(argc, const_cast<char **>(argv));
   } catch (const std::runtime_error &err) {
@@ -84,13 +76,13 @@ int main(int argc, const char *argv[]) {
   bool baseLock_ = true;
   while (true) {
     std::cout << "\n---------------------------------" << std::endl;
-    if (airbase.getBaseLockState() == true) {
+    if (airbase.get_baselock_state() == true) {
       std::cout << "\033[32m[ locked ] \033[0m" << std::endl;
     } else {
       std::cout << "\033[31m[ unlocked ]\033[0m" << std::endl;
     }
     std::cout << "Please select option:" << std::endl;
-    std::cout << "0. unlock/lock the Robotbase" << std::endl;
+    std::cout << "0. unlock/lock the RobotBase" << std::endl;
     std::cout << "1. rebuild the map" << std::endl;
     std::cout << "2. load the map from local file" << std::endl;
     std::cin >> ch;
@@ -98,46 +90,45 @@ int main(int argc, const char *argv[]) {
     if (ch == '0') {
       baseLock_ = !baseLock_;
     } else if (ch == '1') {
-      airbase.buildStcmMap(map_path + "/" + map_name + ".stcm");
+      airbase.build_stcm_map(map_path + "/" + map_name + ".stcm");
       break;
     } else if (ch == '2') {
-      if (airbase.getBaseLockState() == false) {
-        std::cout << "\nPlease lock the Robotbase first." << std::endl;
+      if (airbase.get_baselock_state() == false) {
+        std::cout << "\nPlease lock the RobotBase first." << std::endl;
         continue;
       }
-      airbase.loadStcmMap(map_path + "/" + map_name + ".stcm");
+      airbase.load_stcm_map(map_path + "/" + map_name + ".stcm");
       break;
     }
-    airbase.setBaseLockState(baseLock_);
+    airbase.set_baselock_state(baseLock_);
   }
-
+  int current_episode = start_episode;
   while (true) {
-    int current_episode = airbase.getCurrentEpisode();
     // teach and replay
     std::cout << "\n---------------------------------" << std::endl;
-    if (airbase.getBaseLockState() == true) {
+    if (airbase.get_baselock_state() == true) {
       std::cout << "\033[32m[ locked ] \033[0m" << std::endl;
     } else {
       std::cout << "\033[31m[ unlocked ]\033[0m" << std::endl;
     }
     std::cout << "Please select option:" << std::endl;
-    std::cout << "0. unlock/lock the Robotbase" << std::endl;
-    std::cout << "1. move the Robotbase to origin" << std::endl;
-    std::cout << "2. record the Robotbase action \033[36m[ episode " +
-                     std::to_string(current_episode) + " ]\033[0m"
+    std::cout << "0. unlock/lock the RobotBase" << std::endl;
+    std::cout << "1. move the RobotBase to origin" << std::endl;
+    std::cout << "2. record the RobotBase action \033[36m[ episode " + std::to_string(current_episode) + " ]\033[0m"
               << std::endl;
-    std::cout << "3. replay the Robotbase action" << std::endl;
+    std::cout << "3. replay the RobotBase action" << std::endl;
     std::cin >> ch;
     std::cin.ignore();
     if (ch == '0') {
       baseLock_ = !baseLock_;
     } else if (ch == '1') {
-      airbase.moveToOrigin();
+      airbase.move_to_origin();
     } else if (ch == '2') {
-      airbase.record(task_name, max_time_steps, frequency, start_episode);
+      airbase.record_trajectory(task_name, max_time_steps, frequency, start_episode);
+      current_episode++;
     } else if (ch == '3') {
-      if (airbase.getBaseLockState() == false) {
-        std::cout << "\nPlease lock the Robotbase first." << std::endl;
+      if (airbase.get_baselock_state() == false) {
+        std::cout << "\nPlease lock the RobotBase first." << std::endl;
         continue;
       }
       std::cout << "\nInput the episode num to replay:\n";
@@ -152,9 +143,9 @@ int main(int argc, const char *argv[]) {
       }
       int index;
       std::cin >> index;
-      airbase.replay(data_path + "/" + std::to_string(index) + ".json");
+      airbase.replay_trajectory(data_path + "/" + std::to_string(index) + ".json");
     }
-    airbase.setBaseLockState(baseLock_);
+    airbase.set_baselock_state(baseLock_);
   }
   return 0;
 }
