@@ -67,3 +67,16 @@ pybind11_add_module(airbase_py src/python_interface.cpp)
 target_link_libraries(airbase_py PRIVATE Python::Python airbase)
 
 target_compile_definitions(airbase_py PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
+
+# Install targets
+install(TARGETS airbase airbase_demonstrate
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib/static
+)
+
+# Install headers
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/
+        DESTINATION include/airbase
+        FILES_MATCHING PATTERN "*.h"
+)

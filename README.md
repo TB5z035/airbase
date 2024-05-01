@@ -12,6 +12,7 @@ mkdir build && cd build
 cmake .. && make -j8
 sudo make install
 pip install . -i https://pypi.mirrors.ustc.edu.cn/simple/
+echo 'export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH' >> ~/."${SHELL##*/}"rc
 ```
 
 ## Data Collection && Replay
