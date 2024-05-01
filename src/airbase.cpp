@@ -58,6 +58,8 @@ void AirBase::set_baselock_state(bool lockState) {
   base_lock_ = lockState;
   if (base_lock_) {
     platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
+    // platform.getSystemParameter(SYSPARAM_BRAKE_RELEASE);
+    // platform.getSystemParameter(SYSVAL_EMERGENCY_STOP_ON);
   } else {
     platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_ON);
   }
@@ -68,7 +70,6 @@ int AirBase::get_current_episode() { return episode_; }
 void AirBase::save_data_to_json(const std::string &filename) {
   json jsonData;
 
-  // data clean
   int behaviorCnt = 0;  // for fixing noise behaviors
   int last_valid_behavior = 0;
   for (int i = 0; i < pose_vec_.size() - 1; i++) {
@@ -103,11 +104,14 @@ void AirBase::save_data_to_json(const std::string &filename) {
   pose_vec_.clear();
   timestamp_vec_.clear();
   behavior_vec_.clear();
+  vec_size_ = 0;
 }
 
 void AirBase::load_data_from_json(const std::string &filename) {
   std::ifstream inputFile(filename);
-
+  pose_vec_.clear();
+  timestamp_vec_.clear();
+  behavior_vec_.clear();
   json jsonData;
   try {
     inputFile >> jsonData;
@@ -302,13 +306,16 @@ void AirBase::record_trajectory(std::string task_name, int max_time_steps, int f
   angle_threshold = 10.0 / frequency;
   distance_threshold = 0.05 / frequency;
   set_baselock_state(false);
-  std::cout << "get in" << std::endl;
+  // std::cout << "get in" << std::endl;
   int current_time_step = 0;
-  int ch;
+  char ch;
   bool teaching = true;
   std::thread teach([&]() {
     Pose last_pose = platform.getPose();
     time_t last_timestamp = get_current_time();
+    pose_vec_.clear();
+    timestamp_vec_.clear();
+    behavior_vec_.clear();
     while (teaching && (current_time_step < max_time_steps)) {
       std::cout << "[" << current_time_step + 1 << "/" << max_time_steps << "] ";
       Pose current_pose = platform.getPose();
@@ -332,7 +339,7 @@ void AirBase::record_trajectory(std::string task_name, int max_time_steps, int f
     teaching = false;
   });
 
-  std::cin >> ch;
+  std::cin.ignore() >> ch;
 
   if (current_time_step >= max_time_steps) {
     std::cout << "\nInput 's' to save the collected data, any other key to drop" << std::endl;
@@ -367,9 +374,6 @@ void AirBase::record_trajectory(std::string task_name, int max_time_steps, int f
 
 void AirBase::replay_trajectory(std::string data_path) {
   set_baselock_state(true);
-  pose_vec_.clear();
-  timestamp_vec_.clear();
-  behavior_vec_.clear();
   load_data_from_json(data_path);
   MoveAction action = platform.getCurrentAction();
 
@@ -407,7 +411,7 @@ void AirBase::replay_trajectory(std::string data_path) {
   for (size_t i = 0; i < poseTogo.size(); i++) {
     rpos::actions::MoveAction moveAction = platform.getCurrentAction();
     MoveOptions options;
-    options.mode = NavigationMode(NavigationModeStrictVirtualTrack);
+    // options.mode = NavigationMode(NavigationModeStrictVirtualTrack);
     options.flag = MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
 
     switch (behaviorTogo[i]) {
@@ -418,14 +422,15 @@ void AirBase::replay_trajectory(std::string data_path) {
         std::cout << "x: " << poseTogo[i].x() << ", ";
         std::cout << "y: " << poseTogo[i].y() << std::endl;
         moveAction = platform.moveTo(Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
-        moveAction.waitUntilDone();
+        // moveAction.waitUntilDone();
+        // moveAction.cancel();
       } break;
       case TURNLEFT:
       case TURNRIGHT: {
         std::cout << "\n[" << i << "/" << poseTogo.size() - 1 << "] Rotating to: ";
         std::cout << "yaw: " << poseTogo[i].yaw() << std::endl;
         moveAction = platform.rotateTo(Rotation(poseTogo[i].yaw(), 0, 0));
-        moveAction.waitUntilDone();
+        // moveAction.waitUntilDone();
       } break;
       // case BACKWARD: {
       //   // options.mode =

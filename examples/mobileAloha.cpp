@@ -67,7 +67,7 @@ int main(int argc, const char *argv[]) {
   }
 
   AirBase airbase(ip);
-
+  // 
   airbase.platform.setSystemParameter(SYSPARAM_ROBOT_SPEED, speed);
   airbase.platform.setSystemParameter(SYSPARAM_ROBOT_ANGULAR_SPEED, speed);
 
@@ -102,8 +102,9 @@ int main(int argc, const char *argv[]) {
     }
     airbase.set_baselock_state(baseLock_);
   }
-  int current_episode = airbase.get_current_episode();
+
   while (true) {
+    int current_episode = airbase.get_current_episode();
     // teach and replay
     std::cout << "\n---------------------------------" << std::endl;
     if (airbase.get_baselock_state() == true) {
