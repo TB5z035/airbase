@@ -53,19 +53,30 @@ void AirBase::print_pose() {
   std::cout << "yaw: " << pose.yaw() << std::endl;
 }
 
-bool AirBase::get_baselock_state() { return base_lock_; }
+bool AirBase::is_emergency_stop() {
+  // if(platform.getSystemParameter(SYSPARAM_EMERGENCY_STOP) == SYSVAL_EMERGENCY_STOP_ON)
+  //   return true;
+  // else
+  //   return false;
+  return false;
+}
+
+bool AirBase::get_baselock_state() { 
+  // if (platform.getSystemParameter("SYSPARAM_BRAKE_RELEASE") == SYSVAL_BRAKE_RELEASE_ON)
+  //   return false;
+  // else
+  //   return true;
+  return base_lock_;
+}
+
 void AirBase::set_baselock_state(bool lockState) {
   base_lock_ = lockState;
   if (base_lock_) {
     platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
-    // platform.getSystemParameter(SYSPARAM_BRAKE_RELEASE);
-    // platform.getSystemParameter(SYSVAL_EMERGENCY_STOP_ON);
   } else {
     platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_ON);
   }
 };
-
-int AirBase::get_current_episode() { return episode_; }
 
 void AirBase::save_data_to_json(const std::string &filename) {
   json jsonData;
@@ -278,7 +289,8 @@ void AirBase::build_stcm_map(std::string map_savepath) {
 
 void AirBase::load_stcm_map(std::string map_path) {
   set_baselock_state(true);
-  set_baselock_state(true);
+  // if no sleep, the map will not load
+  boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
   std::cout << "Load map\n" << std::endl;
   std::cout << "--------Begin load map-------------" << std::endl;
   _stcm_map_reader(map_path);
@@ -301,8 +313,7 @@ void AirBase::load_stcm_map(std::string map_path) {
   std::cout << "--------End load map-------------" << std::endl;
 }
 
-void AirBase::record_trajectory(std::string task_name, int max_time_steps, int frequency, int start_episode) {
-  episode_ = (episode_ == 0 && episode_ != start_episode) ? start_episode : episode_;
+void AirBase::record_trajectory(std::string data_dir, int max_time_steps, int frequency) {
   angle_threshold = 10.0 / frequency;
   distance_threshold = 0.05 / frequency;
   set_baselock_state(false);
@@ -332,21 +343,24 @@ void AirBase::record_trajectory(std::string task_name, int max_time_steps, int f
       last_pose = current_pose;
       current_time_step++;
       if (current_time_step >= max_time_steps) {
-        std::cout << "\033[36m Data Collected!\n\033[0m" << std::endl;
+        std::cout << "\033[36m All Data Collected!\n\033[0m" << std::endl;
         std::cout << "\nPress Enter to continue ..." << std::endl;
       }
     }
     teaching = false;
   });
 
-  std::cin.ignore() >> ch;
+  std::cin >> ch;
+  std::cin.ignore();
 
   if (current_time_step >= max_time_steps) {
     std::cout << "\nInput 's' to save the collected data, any other key to drop" << std::endl;
     std::cin >> ch;
+    std::cin.ignore();
     if (ch == 's') {
-      std::string dataname = "base_data/raw/" + task_name + "/" + std::to_string(episode_++) + ".json";
-      save_data_to_json(dataname);
+      std::string data_path = data_dir + "/" + std::to_string(episode_++) + ".json";
+      std::cout << "Data saved to: " << data_path << std::endl;
+      save_data_to_json(data_path);
     } else {
       pose_vec_.clear();
       timestamp_vec_.clear();
@@ -392,12 +406,6 @@ void AirBase::replay_trajectory(std::string data_path) {
 
   std::vector<Line> lines;
 
-  // // fix path
-  //
-  //
-  //
-  //
-
   // build path
   for (int i = 0; i < vec_size_ - 1; ++i) {
     lines.emplace_back(
@@ -432,13 +440,6 @@ void AirBase::replay_trajectory(std::string data_path) {
         moveAction = platform.rotateTo(Rotation(poseTogo[i].yaw(), 0, 0));
         // moveAction.waitUntilDone();
       } break;
-      // case BACKWARD: {
-      //   // options.mode =
-      //   //     NavigationMode(NavigationModeStrictVirtualTrackReverseWalk);
-      //   moveAction = platform.moveTo(
-      //       Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
-      //   moveAction.waitUntilDone();
-      // }
       default:
         break;
     }

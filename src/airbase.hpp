@@ -61,7 +61,10 @@ class AirBase {
   //
   void print_pose();
   bool get_baselock_state();
-  int get_current_episode();
+  bool is_emergency_stop();
+  void set_start_episode(int start_episode) { episode_ = start_episode;}
+  int get_current_episode() { return episode_; }
+
   void set_baselock_state(bool lockState);
   void save_data_to_json(const std::string &filename);
   void load_data_from_json(const std::string &filename);
@@ -77,6 +80,6 @@ class AirBase {
   void build_stcm_map(std::string map_savepath);
   void load_stcm_map(std::string map_path);
   //
-  void record_trajectory(std::string task_name, int max_time_steps, int frequency, int start_episode);
+  void record_trajectory(std::string task_name, int max_time_steps, int frequency);
   void replay_trajectory(std::string task_name);
 };
