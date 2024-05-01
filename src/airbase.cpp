@@ -1,7 +1,13 @@
 #include "airbase.hpp"
 
+<<<<<<< HEAD
 inline time_t get_current_time() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+=======
+inline time_t getCurrentTime() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
       .count();
 }
 
@@ -20,8 +26,14 @@ AirBase::AirBase(std::string ip) {
   std::cout << "Connection Successfully!" << std::endl;
   int battPercentage = platform.getBatteryPercentage();
   std::cout << "Battery: " << battPercentage << "%" << std::endl;
+<<<<<<< HEAD
   std::cout << "\n ------------- robot base inited ------------- \n" << std::endl;
   set_baselock_state(true);
+=======
+  std::cout << "\n ------------- robot base inited ------------- \n"
+            << std::endl;
+  platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
 }
 
 AirBase::~AirBase() { set_baselock_state(true); }
@@ -53,11 +65,20 @@ void AirBase::print_pose() {
   std::cout << "yaw: " << pose.yaw() << std::endl;
 }
 
+<<<<<<< HEAD
 bool AirBase::get_baselock_state() { return base_lock_; }
 void AirBase::set_baselock_state(bool lockState) {
   base_lock_ = lockState;
   if (base_lock_) {
     platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_OFF);
+=======
+bool AirBase::getBaseLockState() { return baseLock_; }
+void AirBase::setBaseLockState(bool lockState) {
+  baseLock_ = lockState;
+  if (baseLock_) {
+    platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE,
+                                SYSVAL_BRAKE_RELEASE_OFF);
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
   } else {
     platform.setSystemParameter(SYSPARAM_BRAKE_RELEASE, SYSVAL_BRAKE_RELEASE_ON);
   }
@@ -136,11 +157,22 @@ void AirBase::load_data_from_json(const std::string &filename) {
   }
 }
 
+<<<<<<< HEAD
 double AirBase::distance_between(Pose pose1, Pose pose2) {
   return std::sqrt((std::pow(pose1.x() - pose2.x(), 2) + std::pow(pose1.y() - pose2.y(), 2)));
 }
 
 double AirBase::angle_between(Pose pose1, Pose pose2) { return std::fabs(pose1.yaw() - pose2.yaw()) / M_PI * 180; }
+=======
+double AirBase::distanceBetween(Pose pose1, Pose pose2) {
+  return std::sqrt((std::pow(pose1.x() - pose2.x(), 2) +
+                    std::pow(pose1.y() - pose2.y(), 2)));
+}
+
+double AirBase::angleBetween(Pose pose1, Pose pose2) {
+  return std::fabs(pose1.yaw() - pose2.yaw()) / M_PI * 180;
+}
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
 
 bool AirBase::if_backward(Pose last_pose, Pose current_pose) {
   double dx = current_pose.x() - last_pose.x();
@@ -151,6 +183,7 @@ bool AirBase::if_backward(Pose last_pose, Pose current_pose) {
   return ((dyaw > M_PI * 0.6) && (dyaw < M_PI * 1.4)) && (distance > distance_threshold) ? true : false;
 }
 
+<<<<<<< HEAD
 int AirBase::get_current_behavior(Pose last_pose, Pose current_pose) {
   int current_behavior;
   auto distance = distance_between(last_pose, current_pose);
@@ -198,6 +231,34 @@ int AirBase::get_current_behavior(Pose last_pose, Pose current_pose) {
       break;
   }
   return current_behavior;
+=======
+int AirBase::getBehavior(Pose last_pose, Pose current_pose) {
+  auto distance = distanceBetween(last_pose, current_pose);
+  printw("distancd: %.8f\n\r", distance);
+  refresh();
+  auto angle = angleBetween(last_pose, current_pose);
+  printw("angle: %.8f\n\r", angle);
+  refresh();
+
+  printw("distance_threshold: %.5f\n", distance_threshold);
+  if ((angle > angle_threshold) &&
+      (distance < angle_factor * distance_threshold)) {
+    if (last_pose.yaw() < current_pose.yaw()) {
+      return leftturning;
+    } else {
+      return rightturning;
+    }
+  }
+  if (distance < distance_threshold) {
+    return stopping;
+  } else {
+    if (ifBackward(last_pose, current_pose)) {
+      return backwarding;
+    } else {
+      return forwarding;
+    }
+  }
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
 }
 
 void AirBase::moveTo_by_line(Point targetPoint) {
@@ -209,15 +270,29 @@ void AirBase::moveTo_by_line(Point targetPoint) {
   pathLine.startP() = Point(currentPose.x(), currentPose.y());
   pathLine.endP() = Point(targetPoint.x(), targetPoint.y());
   platform.addLine(ArtifactUsageVirtualTrack, pathLine);
+<<<<<<< HEAD
   options.flag = MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
   moveAction = platform.moveTo(Location(targetPoint.x(), targetPoint.y(), 0), options);
+=======
+  options.flag =
+      MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
+  // MoveOptionFlag(MoveOptionFlagKeyPoints);
+  moveAction =
+      platform.moveTo(Location(targetPoint.x(), targetPoint.y(), 0), options);
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
   moveAction.waitUntilDone();
   platform.clearLines(ArtifactUsageVirtualTrack);
 }
 
+<<<<<<< HEAD
 void AirBase::move_to_origin() {
   set_baselock_state(true);
   set_baselock_state(true);
+=======
+void AirBase::moveToOrigin() {
+  setBaseLockState(true);
+  setBaseLockState(true);
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
   platform.clearLines(ArtifactUsageVirtualTrack);
   MoveAction action = platform.getCurrentAction();
   std::cout << "\nMoving to origin" << std::endl;
@@ -272,9 +347,15 @@ void AirBase::build_stcm_map(std::string map_savepath) {
   print_pose();
 }
 
+<<<<<<< HEAD
 void AirBase::load_stcm_map(std::string map_path) {
   set_baselock_state(true);
   set_baselock_state(true);
+=======
+void AirBase::loadStcmMap(std::string map_path) {
+  setBaseLockState(true);
+  setBaseLockState(true);
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
   std::cout << "Load map\n" << std::endl;
   std::cout << "--------Begin load map-------------" << std::endl;
   _stcm_map_reader(map_path);
@@ -297,6 +378,7 @@ void AirBase::load_stcm_map(std::string map_path) {
   std::cout << "--------End load map-------------" << std::endl;
 }
 
+<<<<<<< HEAD
 void AirBase::record_trajectory(std::string task_name, int max_time_steps, int frequency, int start_episode) {
   episode_ = (episode_ == 0 && episode_ != start_episode) ? start_episode : episode_;
   angle_threshold = 10.0 / frequency;
@@ -328,10 +410,44 @@ void AirBase::record_trajectory(std::string task_name, int max_time_steps, int f
         std::cout << "\033[36m Data Collected!\n\033[0m" << std::endl;
         std::cout << "\nPress Enter to continue ..." << std::endl;
       }
+=======
+void AirBase::record(std::string task_name, int max_time_steps, int frequency,
+                     int start_episode) {
+  static int episode = start_episode;
+  angle_threshold = 10.0 / frequency;
+  distance_threshold = 0.01 / frequency;
+  setBaseLockState(false);
+  initscr();
+  noecho();
+  cbreak();
+  nodelay(stdscr, TRUE);
+  start_color();
+  init_pair(1, COLOR_CYAN, COLOR_BLACK);
+  init_pair(2, COLOR_RED, COLOR_BLACK);
+  init_pair(3, COLOR_GREEN, COLOR_BLACK);
+
+  int ch;
+  int current_time_steps = 0;
+
+  while ((ch = getch()) != 'q' || (ch = getch()) != 'Q') {
+    clear();
+    printw("Data Collect Mode [episode: %d]\n\r\n\r"
+           "Press 'Space' to start/stop collect data\n\r"
+           "Press 'd' to drop collected data\n\r"
+           "Press 's' to save collected data\n\r"
+           "Press 'r' to remember a position\n\r"
+           "Press 'o' to move the RobotBase to the remembered position\n\r"
+           "Press 'q' to quit data collect mode \n\r\n\r",
+           episode);
+
+    if (ch == ' ') {
+      recording = !recording;
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
     }
     teaching = false;
   });
 
+<<<<<<< HEAD
   std::cin >> ch;
 
   if (current_time_step >= max_time_steps) {
@@ -347,6 +463,95 @@ void AirBase::record_trajectory(std::string task_name, int max_time_steps, int f
       vec_size_ = 0;
       current_time_step = 0;
       std::cout << "\033[31m Data Droped!\n\033[0m" << std::endl;
+=======
+    if (recording) {
+      if (current_time_steps == 0) {
+        lastTimestamp = getCurrentTime();
+        lastPose = platform.getPose();
+      }
+      if (current_time_steps <= max_time_steps) {
+        currentTimestamp = getCurrentTime();
+        timestampVec.emplace_back(currentTimestamp);
+        currentPose = platform.getPose();
+        poseVec.emplace_back(currentPose);
+        currentBehavior = getBehavior(lastPose, currentPose);
+        behaviorVec.emplace_back(currentBehavior);
+        if (getCurrentTime() - lastTimestamp < 1000.0 / frequency) {
+          boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
+        }
+        lastTimestamp = currentTimestamp;
+        lastPose = currentPose;
+        attron(COLOR_PAIR(1));
+        printw("Recording\n\r");
+        printw("Collecting %d/%d steps\n\r", current_time_steps,
+               max_time_steps);
+        attroff(COLOR_PAIR(1));
+        switch (currentBehavior) {
+        case forwarding:
+          printw("\n\rcar is forwarding   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\r");
+          refresh();
+          break;
+        case backwarding:
+          printw("\n\rcar is backwarding  |vvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n\r");
+          refresh();
+          break;
+        case leftturning:
+          printw("\n\rcar is leftturning  |<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\r");
+          refresh();
+          break;
+        case rightturning:
+          printw("\n\rcar is rightturning |>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\r");
+          refresh();
+          break;
+        case stopping:
+          printw("\n\rcar is stoping      |.............................\n\r");
+          refresh();
+          break;
+        }
+        current_time_steps++;
+      } else {
+        attron(COLOR_PAIR(3));
+        printw("\n\rdata collected.\n\r");
+        attroff(COLOR_PAIR(3));
+        if (ch == 's') {
+          std::string dataname = "base_data/raw/" + task_name + "/" +
+                                 std::to_string(episode++) + ".json";
+          saveDataToJson(dataname);
+          poseVec.clear();
+          timestampVec.clear();
+          behaviorVec.clear();
+          vecSize = 0;
+          current_time_steps = 0;
+          recording = false;
+          //
+          attron(COLOR_PAIR(3));
+          printw(("\ncollected data saved to " + dataname + "\n\r").c_str());
+          attroff(COLOR_PAIR(3));
+          refresh();
+          boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
+          break;
+        }
+        refresh();
+      }
+    } else {
+      attron(COLOR_PAIR(2));
+      printw("not recording \n\r");
+      attroff(COLOR_PAIR(2));
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
+    }
+    if (ch == 'd') {
+      poseVec.clear();
+      timestampVec.clear();
+      behaviorVec.clear();
+      vecSize = 0;
+      current_time_steps = 0;
+      recording = false;
+      //
+      attron(COLOR_PAIR(2));
+      printw("data dropped !\n\r");
+      attroff(COLOR_PAIR(2));
+      refresh();
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
       boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
     }
   } else {
@@ -359,9 +564,13 @@ void AirBase::record_trajectory(std::string task_name, int max_time_steps, int f
     std::cout << "\033[31m \nData collect cancled! \033[0m" << std::endl;
     boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
   }
+<<<<<<< HEAD
 
   set_baselock_state(true);
   teach.join();
+=======
+  endwin();
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
   return;
 }
 
@@ -372,6 +581,18 @@ void AirBase::replay_trajectory(std::string data_path) {
   behavior_vec_.clear();
   load_data_from_json(data_path);
   MoveAction action = platform.getCurrentAction();
+<<<<<<< HEAD
+=======
+  loadDataFromJson("base_data/raw/test/0.json");
+
+  std::vector<Line> lines;
+  for (size_t i = 0; i < vecSize - 1; ++i) {
+    lines.emplace_back(Line(Point(poseVec[i].x(), poseVec[i].y()),
+                            Point(poseVec[i + 1].x(), poseVec[i + 1].y())));
+  }
+  platform.clearLines(ArtifactUsageVirtualTrack);
+  platform.addLines(ArtifactUsageVirtualTrack, lines);
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
 
   // select key points
   std::vector<Pose> poseTogo;
@@ -407,6 +628,7 @@ void AirBase::replay_trajectory(std::string data_path) {
   for (size_t i = 0; i < poseTogo.size(); i++) {
     rpos::actions::MoveAction moveAction = platform.getCurrentAction();
     MoveOptions options;
+<<<<<<< HEAD
     options.mode = NavigationMode(NavigationModeStrictVirtualTrack);
     options.flag = MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
 
@@ -436,6 +658,40 @@ void AirBase::replay_trajectory(std::string data_path) {
       // }
       default:
         break;
+=======
+    options.flag =
+        MoveOptionFlag(MoveOptionFlagKeyPoints | MoveOptionFlagPrecise);
+    // MoveOptionFlag(MoveOptionFlagKeyPoints);
+
+    switch (behaviorTogo[i]) {
+    case forwarding:
+    case backwarding:
+    case stopping: {
+      std::cout << "\n[" << i << "/" << poseTogo.size() - 1 << "] Moving to: ";
+      std::cout << "x: " << poseTogo[i].x() << ", ";
+      std::cout << "y: " << poseTogo[i].y() << std::endl;
+      moveAction = platform.moveTo(
+          Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
+      moveAction.waitUntilDone();
+    } break;
+    case leftturning:
+    case rightturning: {
+      std::cout << "\n[" << i << "/" << poseTogo.size() - 1
+                << "] Rotating to: ";
+      std::cout << "yaw: " << poseTogo[i].yaw() << std::endl;
+      moveAction = platform.rotateTo(Rotation(poseTogo[i].yaw(), 0, 0));
+      moveAction.waitUntilDone();
+    } break;
+    // case backwarding: {
+    //   // options.mode =
+    //   //     NavigationMode(NavigationModeStrictVirtualTrackReverseWalk);
+    //   moveAction = platform.moveTo(
+    //       Location(poseTogo[i].x(), poseTogo[i].y(), 0), options);
+    //   moveAction.waitUntilDone();
+    // }
+    default:
+      break;
+>>>>>>> 4ca2b4989a82a45e29262089055b3a83f758efe7
     }
 
     while ((get_current_time() - beginTime) < (timestampTogo[i] - timestamp_vec_[0])) {
