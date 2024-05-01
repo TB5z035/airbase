@@ -56,8 +56,8 @@ target_link_libraries(airbase
         ncurses
         argparse)
 
-add_executable(mobileAloha ${CMAKE_SOURCE_DIR}/examples/mobileAloha.cpp)
-target_link_libraries(mobileAloha airbase)
+add_executable(airbase_demonstrate ${CMAKE_SOURCE_DIR}/examples/mobileAloha.cpp)
+target_link_libraries(airbase_demonstrate airbase)
 
 add_executable(keyboardControl ${CMAKE_SOURCE_DIR}/examples/keyboardControl.cpp)
 target_link_libraries(keyboardControl airbase)
