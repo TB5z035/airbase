@@ -102,7 +102,7 @@ int main(int argc, const char *argv[]) {
     }
     airbase.set_baselock_state(baseLock_);
   }
-  int current_episode = start_episode;
+  int current_episode = airbase.get_current_episode();
   while (true) {
     // teach and replay
     std::cout << "\n---------------------------------" << std::endl;
@@ -118,14 +118,12 @@ int main(int argc, const char *argv[]) {
               << std::endl;
     std::cout << "3. replay the RobotBase action" << std::endl;
     std::cin >> ch;
-    std::cin.ignore();
     if (ch == '0') {
       baseLock_ = !baseLock_;
     } else if (ch == '1') {
       airbase.move_to_origin();
     } else if (ch == '2') {
       airbase.record_trajectory(task_name, max_time_steps, frequency, start_episode);
-      current_episode++;
     } else if (ch == '3') {
       if (airbase.get_baselock_state() == false) {
         std::cout << "\nPlease lock the RobotBase first." << std::endl;

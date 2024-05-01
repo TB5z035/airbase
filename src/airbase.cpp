@@ -298,84 +298,80 @@ void AirBase::load_stcm_map(std::string map_path) {
 }
 
 void AirBase::record_trajectory(std::string task_name, int max_time_steps, int frequency, int start_episode) {
-  episode_ = (episode_ == 0 && episode_ != start_episode) ? start_episode : episode_ + 1;
+  episode_ = (episode_ == 0 && episode_ != start_episode) ? start_episode : episode_;
   angle_threshold = 10.0 / frequency;
   distance_threshold = 0.05 / frequency;
   set_baselock_state(false);
-  std::cout << "------------ teach start ------------\n " << std::endl;
-
+  std::cout << "get in" << std::endl;
   int current_time_step = 0;
   int ch;
-  std::string tmp;
   bool teaching = true;
   std::thread teach([&]() {
     Pose last_pose = platform.getPose();
     time_t last_timestamp = get_current_time();
     while (teaching && (current_time_step < max_time_steps)) {
-      std::cout << "[" << current_time_step << "/" << max_time_steps << "] ";
+      std::cout << "[" << current_time_step + 1 << "/" << max_time_steps << "] ";
       Pose current_pose = platform.getPose();
       time_t current_time = get_current_time();
       pose_vec_.emplace_back(current_pose);
       timestamp_vec_.emplace_back(current_time);
       auto behavior = get_current_behavior(last_pose, current_pose);
       behavior_vec_.emplace_back(behavior);
-      if (get_current_time() - last_timestamp < 1000.0 / frequency) {
-        boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-      }
-      last_timestamp = current_time;
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(1000 / frequency));
+      // if (get_current_time() - last_timestamp < 1000.0 / frequency) {
+      //   boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
+      // }
+      // last_timestamp = current_time;
       last_pose = current_pose;
       current_time_step++;
+      if (current_time_step >= max_time_steps) {
+        std::cout << "\033[36m Data Collected!\n\033[0m" << std::endl;
+        std::cout << "\nPress Enter to continue ..." << std::endl;
+      }
     }
     teaching = false;
   });
-  while (true) {
 
-    std::getline(std::cin, tmp);
+  std::cin >> ch;
 
-    teaching = !teaching;
-
-    if (current_time_step >= max_time_steps) {
-      std::cout << "\033[36m Data Collected!\n\033[0m" << std::endl;
-      std::cin >> ch;
-      std::cin.ignore();
-      if (ch == 's') {
-        std::string dataname = "base_data/raw/" + task_name + "/" + std::to_string(episode_) + ".json";
-        save_data_to_json(dataname);
-        break;
-      } else if (ch == 'd') {
-        teaching = false;
-        pose_vec_.clear();
-        timestamp_vec_.clear();
-        behavior_vec_.clear();
-        vec_size_ = 0;
-        current_time_step = 0;
-        std::cout << "\033[31m Data Droped!\n\033[0m" << std::endl;
-        boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
-        break;
-      }
+  if (current_time_step >= max_time_steps) {
+    std::cout << "\nInput 's' to save the collected data, any other key to drop" << std::endl;
+    std::cin >> ch;
+    if (ch == 's') {
+      std::string dataname = "base_data/raw/" + task_name + "/" + std::to_string(episode_++) + ".json";
+      save_data_to_json(dataname);
     } else {
-      teaching = false;
       pose_vec_.clear();
       timestamp_vec_.clear();
       behavior_vec_.clear();
       vec_size_ = 0;
       current_time_step = 0;
-      std::cout << "\033[31m \nData collect cancled! \033[0m" << std::endl;
+      std::cout << "\033[31m Data Droped!\n\033[0m" << std::endl;
       boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
     }
+  } else {
+    pose_vec_.clear();
+    timestamp_vec_.clear();
+    behavior_vec_.clear();
+    vec_size_ = 0;
+    current_time_step = 0;
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
+    std::cout << "\033[31m \nData collect cancled! \033[0m" << std::endl;
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(1500));
   }
 
-  std::cout << "------------ teach finish ------------\n " << std::endl;
   set_baselock_state(true);
+  teach.join();
   return;
 }
 
 void AirBase::replay_trajectory(std::string data_path) {
   set_baselock_state(true);
-  set_baselock_state(true);
-  std::cout << "------------ replay start ------------\n " << std::endl;
-  MoveAction action = platform.getCurrentAction();
+  pose_vec_.clear();
+  timestamp_vec_.clear();
+  behavior_vec_.clear();
   load_data_from_json(data_path);
+  MoveAction action = platform.getCurrentAction();
 
   // select key points
   std::vector<Pose> poseTogo;
@@ -446,5 +442,4 @@ void AirBase::replay_trajectory(std::string data_path) {
       boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
     }
   }
-  std::cout << "------------ replay finish ------------\n " << std::endl;
 }

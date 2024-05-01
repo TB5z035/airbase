@@ -48,7 +48,6 @@ class AirBase {
   int episode_ = 0;
   //
   bool base_lock_ = true;
-  std::mutex datalock;
 
  protected:
   bool _stcm_map_writer(const std::string file_name);
