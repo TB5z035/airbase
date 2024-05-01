@@ -13,28 +13,20 @@
 
 namespace py = pybind11;
 
-AirBase create(const py::list& args) {
-  int argc = args.size();
-  const char* argv[argc];
-  for (int i = 0; i < argc; ++i) {
-    argv[i] = py::str(args[i]).cast<std::string>().c_str();
-  }
-  return AirBase(argc, argv);
-}
-
 PYBIND11_MODULE(airbase_py, m) {
   m.attr("__version__") = "1.0.0";
   py::class_<AirBase, std::unique_ptr<AirBase>>(m, "AirBase")
-      .def("print_pose", &AirBase::printPose)
-      .def("get_base_lock_state", &AirBase::getBaseLockState)
-      .def("set_base_lock_state", &AirBase::setBaseLockState)
-      .def("save_data_to_json", &AirBase::saveDataToJson)
-      .def("load_data_from_json", &AirBase::loadDataFromJson)
-      .def("move_to_origin", &AirBase::moveToOrigin)
-      .def("build_stcm_map", &AirBase::buildStcmMap)
-      .def("load_stcm_map", &AirBase::loadStcmMap)
-      .def("teach", &AirBase::teach)
-      .def("replay", &AirBase::replay)
+      .def(py::init<std::string>(), py::arg("ip"))
+      .def("print_pose", &AirBase::print_pose)
+      .def("get_base_lock_state", &AirBase::get_baselock_state)
+      .def("set_base_lock_state", &AirBase::set_baselock_state)
+      .def("save_data_to_json", &AirBase::save_data_to_json)
+      .def("load_data_from_json", &AirBase::load_data_from_json)
+      .def("move_to_origin", &AirBase::move_to_origin)
+      .def("build_stcm_map", &AirBase::build_stcm_map)
+      .def("load_stcm_map", &AirBase::load_stcm_map)
+      .def("teach", &AirBase::record_trajectory)
+      .def("replay", &AirBase::replay_trajectory)
       .def_readwrite("platform", &AirBase::platform);
 
   py::enum_<rpos::core::ACTION_DIRECTION>(m, "ACTION_DIRECTION")
@@ -46,15 +38,12 @@ PYBIND11_MODULE(airbase_py, m) {
       .export_values();
 
   py::class_<Direction>(m, "Direction")
-      .def(py::init<ACTION_DIRECTION>(),
-           py::arg("direction") = ACTION_DIRECTION::FORWARD)
-      .def("direction",
-           (ACTION_DIRECTION(Direction::*)() const) & Direction::direction);
+      .def(py::init<ACTION_DIRECTION>(), py::arg("direction") = ACTION_DIRECTION::FORWARD)
+      .def("direction", (ACTION_DIRECTION(Direction::*)() const) & Direction::direction);
 
   py::class_<Location>(m, "Location")
       .def(py::init<>())
-      .def(py::init<double, double, double>(), py::arg("x") = 0,
-           py::arg("y") = 0, py::arg("z") = 0)
+      .def(py::init<double, double, double>(), py::arg("x") = 0, py::arg("y") = 0, py::arg("z") = 0)
       .def(py::init<const Location&>())
       .def("__eq__", &Location::operator==)
       .def("x", (double(Location::*)() const) & Location::x)
@@ -67,8 +56,7 @@ PYBIND11_MODULE(airbase_py, m) {
 
   py::class_<Rotation>(m, "Rotation")
       .def(py::init<>())
-      .def(py::init<double, double, double>(), py::arg("yaw") = 0,
-           py::arg("pitch") = 0, py::arg("roll") = 0)
+      .def(py::init<double, double, double>(), py::arg("yaw") = 0, py::arg("pitch") = 0, py::arg("roll") = 0)
       .def(py::init<const Rotation&>())
       .def(py::init<const Eigen::Matrix3d&>())
       .def("__eq__", &Rotation::operator==)
@@ -82,8 +70,7 @@ PYBIND11_MODULE(airbase_py, m) {
 
   py::class_<Pose>(m, "Pose")
       .def(py::init<>())
-      .def(py::init<Location, Rotation>(), py::arg("location") = Location(),
-           py::arg("rotation") = Rotation())
+      .def(py::init<Location, Rotation>(), py::arg("location") = Location(), py::arg("rotation") = Rotation())
       .def(py::init<const Pose&>())
       .def("__eq__", &Pose::operator==);
 
@@ -103,11 +90,7 @@ PYBIND11_MODULE(airbase_py, m) {
       .def("getCurrentSpeed", &MoveAction::getCurrentSpeed)
       .def("getRemainingTime", &MoveAction::getRemainingTime);
 
-  py::class_<SlamwareCorePlatform, std::unique_ptr<SlamwareCorePlatform>>(
-      m, "SlamwareCorePlatform")
+  py::class_<SlamwareCorePlatform, std::unique_ptr<SlamwareCorePlatform>>(m, "SlamwareCorePlatform")
       .def("set_system_parameter", &SlamwareCorePlatform::setSystemParameter)
-      .def("move_by",
-           py::overload_cast<const Direction&>(&SlamwareCorePlatform::moveBy));
-
-  m.def("create", &create);
+      .def("move_by", py::overload_cast<const Direction&>(&SlamwareCorePlatform::moveBy));
 };

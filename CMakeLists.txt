@@ -62,7 +62,7 @@ target_link_libraries(airbase_demonstrate airbase)
 add_executable(keyboardControl ${CMAKE_SOURCE_DIR}/examples/keyboardControl.cpp)
 target_link_libraries(keyboardControl airbase)
 
-add_subdirectory(pybind11)
+add_subdirectory(thirdparty/pybind11)
 pybind11_add_module(airbase_py src/python_interface.cpp)
 target_link_libraries(airbase_py PRIVATE Python::Python airbase)
 
