@@ -31,10 +31,6 @@ if __name__ == "__main__":
     airbase.platform.set_system_parameter(
         params["SYSPARAM_ROBOT_ANGULAR_SPEED"], params["SYSVAL_ROBOT_SPEED_HIGH"]
     )
-
-    # set the map
-    base_lock = True
-    airbase.set_base_lock_state(base_lock)
     while True:
         print("Please select option:")
         print("0. unlock the base")
@@ -42,15 +38,13 @@ if __name__ == "__main__":
         print("2. load the map from local file(please move car close to the origin)")
         key = input("Please input the option and press Enter:")
         if key == "0":
-            # 求反
-            base_lock = not base_lock
+            airbase.set_base_lock_state(airbase.get_base_lock_state())
         elif key == "1":
             airbase.build_stcm_map("map.stcm")
             break
         elif key == "2":
             airbase.load_stcm_map("map.stcm")
             break
-        airbase.set_base_lock_state(base_lock)
 
     forward = airbase_py.Direction(airbase_py.ACTION_DIRECTION.FORWARD)
     backward = airbase_py.Direction(airbase_py.ACTION_DIRECTION.BACKWARD)
